@@ -1,24 +1,15 @@
-type AdminChanged @entity(immutable: true) {
-  id: Bytes!
-  previousAdmin: Bytes! # address
-  newAdmin: Bytes! # address
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
+type Protocol @entity {
+    "Configurator proxy address"
+    id: Bytes!
+
+    configuratorProxy: Bytes!
+    configuratorImplementation: Bytes
 }
 
-type BeaconUpgraded @entity(immutable: true) {
-  id: Bytes!
-  beacon: Bytes! # address
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
-}
+type Market @entity {
+    "Comet proxy address"
+    id: Bytes!
 
-type Upgraded @entity(immutable: true) {
-  id: Bytes!
-  implementation: Bytes! # address
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
+    cometProxy: Bytes!
+    cometImplementation: Bytes
 }
