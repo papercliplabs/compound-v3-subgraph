@@ -8,7 +8,7 @@ export function getOrCreateProtocol(): Protocol {
         protocol = new Protocol(CONFIGURATOR_PROXY_ADDRESS);
 
         protocol.configuratorProxy = CONFIGURATOR_PROXY_ADDRESS;
-        // TODO: other things
+        // protocol.configuratorImplementation  // TODO: also here need to read storage slot
 
         protocol.save();
     }

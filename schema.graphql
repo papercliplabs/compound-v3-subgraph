@@ -1,15 +1,157 @@
+####
+# Protocol
+#### 
+
 type Protocol @entity {
     "Configurator proxy address"
     id: Bytes!
 
     configuratorProxy: Bytes!
     configuratorImplementation: Bytes
+
+    markets: [Market!]! @derivedFrom(field: "protocol")
 }
+
+####
+# MARKET
+####
 
 type Market @entity {
     "Comet proxy address"
     id: Bytes!
 
     cometProxy: Bytes!
+    protocol: Protocol!
+    creationBlockNumber: BigInt!
+    factory: Bytes!
+
+    # Hard to get since need to read proxy memory slot, will populate on Upgrade event
     cometImplementation: Bytes
+
+    # Configuration
+    governor: Bytes!
+    pauseGuardian: Bytes!
+    extensionDelegate: Bytes!
+
+    supplyKink: BigInt!
+    supplyPerYearInterestRateSlopeLow: BigInt!
+    supplyPerYearInterestRateSlopeHigh: BigInt!
+    supplyPerYearInterestRateBase: BigInt!
+
+    borrowKink: BigInt!
+    borrowPerYearInterestRateSlopeLow: BigInt!
+    borrowPerYearInterestRateSlopeHigh: BigInt!
+    borrowPerYearInterestRateBase: BigInt!
+
+    storeFrontPriceFactor: BigInt!
+    trackingIndexScale: BigInt!
+
+    baseTrackingSupplySpeed: BigInt!
+	baseTrackingBorrowSpeed: BigInt!
+	baseMinForRewards: BigInt!
+	baseBorrowMin: BigInt!
+	targetReserves: BigInt!
+
+    baseAsset: BaseAsset! 
+    collateralAssets: [CollateralAsset!]! @derivedFrom(field: "market")
+    
+    # Finances
 }
+
+interface Asset {
+    id: Bytes!
+
+    address: Bytes!
+    name: String!
+    symbol: String!
+    decimals: Int!
+
+    market: Market!
+    priceFeed: Bytes!
+}
+
+type BaseAsset implements Asset @entity { 
+    "Comet proxy address + asset address"
+    id: Bytes!
+
+    address: Bytes!
+    name: String!
+    symbol: String!
+    decimals: Int!
+
+    market: Market!
+    priceFeed: Bytes!
+}
+
+type CollateralAsset implements Asset @entity { 
+    id: Bytes!
+
+    address: Bytes!
+    name: String!
+    symbol: String!
+    decimals: Int!
+
+    market: Market!
+    priceFeed: Bytes!
+
+    borrowCollateralFactor: BigInt!
+    liquidateCollateralFactor: BigInt!
+    liquidationFactor: BigInt!
+    supplyCap: BigInt!
+}
+
+####
+# Interactions
+####
+
+interface ProtocolInteraction {
+    id: Bytes!
+
+    hash: Bytes!
+    logIndex: BigInt!
+    blockNumber: BigInt!
+    timestamp: BigInt!
+
+    from: Bytes!
+    to: Bytes!
+}
+
+interface MarketInteraction implements ProtocolInteraction {
+    id: Bytes!
+
+    hash: Bytes!
+    logIndex: BigInt!
+    blockNumber: BigInt!
+    timestamp: BigInt!
+
+    # From: where value is being transferred from
+    from: Bytes!
+    # To: where value is being transferred to
+    to: Bytes!
+
+    market: Market!
+
+    asset: Asset!
+    amount: BigInt!
+    amountUsd: BigDecimal!
+}
+
+# type SupplyBase implements MarketInteraction @entity {
+#     id: Bytes!
+
+#     hash: Bytes!
+#     logIndex: BigInt!
+#     blockNumber: BigInt!
+#     timestamp: BigInt!
+
+#     # From: where value is being transferred from
+#     from: Bytes!
+#     # To: where value is being transferred to
+#     to: Bytes!
+
+#     market: Market!
+
+#     asset: BaseAsset!
+#     amount: BigInt!
+#     amountUsd: BigDecimal!
+# }

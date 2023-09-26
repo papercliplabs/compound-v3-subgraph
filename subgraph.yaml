@@ -41,7 +41,14 @@ templates:
           abis:
               - name: Comet
                 file: ./abis/Comet.json
+              - name: Configurator
+                file: ./abis/Configurator.json
+              - name: Erc20
+                file: ./abis/Erc20.json
           eventHandlers:
+              - event: Upgraded(indexed address)
+                handler: handleUpgraded
               - event: Supply(indexed address,indexed address,uint256)
                 handler: handleSupply
+
           file: ./src/mappings/comet.ts

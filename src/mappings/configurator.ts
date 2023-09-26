@@ -14,9 +14,6 @@ export function handleSetFactory(event: SetFactoryEvent): void {
 
     // Create dynamic data source
     Comet.create(marketId);
-
-    let market = getOrCreateMarket(marketId);
-    market.save();
 }
 
 // import {
