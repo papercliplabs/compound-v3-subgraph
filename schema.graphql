@@ -9,7 +9,7 @@ type Protocol @entity {
     configuratorProxy: Bytes!
     configuratorImplementation: Bytes
 
-    markets: [Market!]! @derivedFrom(field: "protocol")
+    markets: [Market!] @derivedFrom(field: "protocol")
 }
 
 ####
@@ -29,19 +29,20 @@ type Market @entity {
     cometImplementation: Bytes
 
     # Configuration
+    lastConfigurationUpdateBlockNumber: BigInt!
     governor: Bytes!
     pauseGuardian: Bytes!
     extensionDelegate: Bytes!
 
-    supplyKink: BigInt!
-    supplyPerYearInterestRateSlopeLow: BigInt!
-    supplyPerYearInterestRateSlopeHigh: BigInt!
-    supplyPerYearInterestRateBase: BigInt!
+    supplyKink: BigDecimal!
+    supplyPerSecondInterestRateSlopeLow: BigInt!
+    supplyPerSecondInterestRateSlopeHigh: BigInt!
+    supplyPerSecondInterestRateBase: BigInt!
 
-    borrowKink: BigInt!
-    borrowPerYearInterestRateSlopeLow: BigInt!
-    borrowPerYearInterestRateSlopeHigh: BigInt!
-    borrowPerYearInterestRateBase: BigInt!
+    borrowKink: BigDecimal!
+    borrowPerSecondInterestRateSlopeLow: BigInt!
+    borrowPerSecondInterestRateSlopeHigh: BigInt!
+    borrowPerSecondInterestRateBase: BigInt!
 
     storeFrontPriceFactor: BigInt!
     trackingIndexScale: BigInt!
@@ -54,8 +55,35 @@ type Market @entity {
 
     baseAsset: BaseAsset! 
     collateralAssets: [CollateralAsset!]! @derivedFrom(field: "market")
+
+    # Indices
+    baseSupplyIndex: BigInt!
+    baseBorrowIndex: BigInt!
+    trackingSupplyIndex: BigInt!
+    trackingBorrowIndex: BigInt!
+    lastAccrualTime: BigInt!
     
-    # Finances
+    # Accounting Inputs
+    totalBasePrincipalSupply: BigInt!
+    totalBasePrincipalBorrow: BigInt!
+
+    lastAccountingUpdatedBlockNumber: BigInt!
+
+    # Derived accounting
+    "Total amount of base supplied to the market in present value"
+    totalBaseSupply: BigInt!
+    "Total amount of base borrowed from the market in present value"
+    totalBaseBorrow: BigInt!
+    "Percent usage of the market, that is totalBaseBorrow / totalBaseSupply"
+    utilization: BigDecimal!
+    supplyApr: BigDecimal!
+    borrowApr: BigDecimal!
+
+    # Positions
+    positions: [Position!]! @derivedFrom(field: "market")
+
+    # Interactions
+    supplyBaseMarketInteractions: [SupplyBaseMarketInteraction!]! @derivedFrom(field: "market")
 }
 
 interface Asset {
@@ -94,10 +122,43 @@ type CollateralAsset implements Asset @entity {
     market: Market!
     priceFeed: Bytes!
 
-    borrowCollateralFactor: BigInt!
-    liquidateCollateralFactor: BigInt!
-    liquidationFactor: BigInt!
+    "Percent of collateral that can be borrowed against"
+    borrowCollateralFactor: BigDecimal!
+    "Percent of collateral that can be borrowed before the account becomes liquidate-able"
+    liquidateCollateralFactor: BigDecimal!
+    "Percent penalty incurred by the account upon liquidation, 0.93 => 7% penalty"
+    liquidationFactor: BigDecimal!
+    "Max amount that can be supplied to protect the protocol against over exposure"
     supplyCap: BigInt!
+
+    "Balance of the collateral asset"
+    balance: BigInt!
+}
+
+####
+# POSITIONS
+####
+
+type Position @entity {
+    "market proxy address + owner address"
+    id: Bytes!
+
+    creationBlockNumber: BigInt!
+    lastUpdatedBlockNumber: BigInt!
+
+    "Market the position is in"
+    market: Market!
+
+    "Owner of the position"
+    owner: Bytes!
+
+    basePrincipal: BigInt!
+    basePrincipalIsNegative: Boolean!
+
+    # TODO: add collateral?
+
+    # Interactions
+    supplyBaseMarketInteractions: [SupplyBaseMarketInteraction!]! @derivedFrom(field: "position")
 }
 
 ####
@@ -124,34 +185,40 @@ interface MarketInteraction implements ProtocolInteraction {
     blockNumber: BigInt!
     timestamp: BigInt!
 
-    # From: where value is being transferred from
+    "where value is being transferred from"
     from: Bytes!
-    # To: where value is being transferred to
+    "where value is being transferred to"
     to: Bytes!
+    "who has ownership over this value"
+    dst: Bytes!
 
     market: Market!
-
-    asset: Asset!
-    amount: BigInt!
-    amountUsd: BigDecimal!
+    position: Position!
 }
 
-# type SupplyBase implements MarketInteraction @entity {
-#     id: Bytes!
+type SupplyBaseMarketInteraction implements MarketInteraction @entity {
+    "event hash + logIndex"
+    id: Bytes!
 
-#     hash: Bytes!
-#     logIndex: BigInt!
-#     blockNumber: BigInt!
-#     timestamp: BigInt!
+    hash: Bytes!
+    logIndex: BigInt!
+    blockNumber: BigInt!
+    timestamp: BigInt!
 
-#     # From: where value is being transferred from
-#     from: Bytes!
-#     # To: where value is being transferred to
-#     to: Bytes!
+    "where value is being transferred from"
+    from: Bytes!
+    "where value is being transferred to"
+    to: Bytes!
+    "who owns this value"
+    dst: Bytes!
 
-#     market: Market!
+    market: Market!
+    position: Position!
 
-#     asset: BaseAsset!
-#     amount: BigInt!
-#     amountUsd: BigDecimal!
-# }
+    asset: BaseAsset!
+    amount: BigInt!
+    amountUsd: BigDecimal!
+
+    supplyPrincipalIncrease: BigInt!
+    borrowPrincipalDecrease: BigInt!
+}

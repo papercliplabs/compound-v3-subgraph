@@ -1,7 +1,7 @@
 import { Comet } from "../../generated/templates";
 import { Upgraded as UpgradedEvent, SetFactory as SetFactoryEvent } from "../../generated/Configurator/Configurator";
-import { getOrCreateProtocol } from "../mappingHelpers/getOrCreate/protocol";
-import { getOrCreateMarket } from "../mappingHelpers/getOrCreate/market";
+import { getOrCreateProtocol } from "../mappingHelpers/protocol";
+import { getOrCreateMarket } from "../mappingHelpers/market";
 
 export function handleUpgraded(event: UpgradedEvent): void {
     let protocol = getOrCreateProtocol();

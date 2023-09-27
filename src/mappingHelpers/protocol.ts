@@ -1,5 +1,5 @@
-import { Protocol } from "../../../generated/schema";
-import { CONFIGURATOR_PROXY_ADDRESS } from "../../common/constants";
+import { Protocol } from "../../generated/schema";
+import { CONFIGURATOR_PROXY_ADDRESS } from "../common/constants";
 
 export function getOrCreateProtocol(): Protocol {
     let protocol = Protocol.load(CONFIGURATOR_PROXY_ADDRESS);
