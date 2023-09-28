@@ -58,4 +58,8 @@ templates:
                 handler: handleTransferCollateral
               - event: AbsorbCollateral(indexed address,indexed address,indexed address,uint256,uint256)
                 handler: handleAbsorbCollateral
+              - event: BuyCollateral(indexed address,indexed address,uint256,uint256)
+                handler: handleBuyCollateral
+              - event: WithdrawReserves(indexed address,uint256)
+                handler: handleWithdrawReserves
           file: ./src/mappings/comet.ts

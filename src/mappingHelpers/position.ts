@@ -1,12 +1,12 @@
 import { Address, ethereum } from "@graphprotocol/graph-ts";
-import { Position, Market } from "../../generated/schema";
+import { Position, Market, Account } from "../../generated/schema";
 import { ZERO_BI } from "../common/constants";
 import { getOrCreateMarket } from "./market";
 import { presentValue } from "../common/utils";
 import { Comet as CometContract } from "../../generated/templates/Comet/Comet";
 
-export function getOrCreatePosition(market: Market, owner: Address, event: ethereum.Event): Position {
-    const id = market.id.concat(owner);
+export function getOrCreatePosition(market: Market, account: Account, event: ethereum.Event): Position {
+    const id = market.id.concat(account.id);
     let position = Position.load(id);
 
     if (!position) {
@@ -15,7 +15,7 @@ export function getOrCreatePosition(market: Market, owner: Address, event: ether
         position.creationBlockNumber = event.block.number;
         position.lastUpdatedBlockNumber = event.block.number;
         position.market = market.id;
-        position.owner = owner;
+        position.account = account.id;
         position.basePrincipal = ZERO_BI;
         position.baseBalance = ZERO_BI;
         position.baseTrackingIndex = ZERO_BI;
@@ -31,7 +31,7 @@ export function updatePosition(position: Position, event: ethereum.Event): void 
     const market = getOrCreateMarket(Address.fromBytes(position.market), event);
     const comet = CometContract.bind(Address.fromBytes(market.id));
 
-    const userBasic = comet.userBasic(Address.fromBytes(position.owner));
+    const userBasic = comet.userBasic(Address.fromBytes(position.account));
 
     position.lastUpdatedBlockNumber = event.block.number;
     position.basePrincipal = userBasic.getPrincipal();

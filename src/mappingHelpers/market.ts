@@ -102,6 +102,8 @@ export function updateMarketAccounting(market: Market, event: ethereum.Event): v
     market.totalBasePrincipalSupply = totalsBasic.totalSupplyBase;
     market.totalBasePrincipalBorrow = totalsBasic.totalBorrowBase;
 
+    market.baseReserveBalance = comet.getReserves();
+
     // Derived
     market.totalBaseSupply = presentValue(market.totalBasePrincipalSupply, market.baseSupplyIndex);
     market.totalBaseBorrow = presentValue(market.totalBasePrincipalBorrow, market.baseBorrowIndex);

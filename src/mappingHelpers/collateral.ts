@@ -1,4 +1,4 @@
-import { Address, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
+import { Address, BigInt, Bytes, ethereum, log } from "@graphprotocol/graph-ts";
 import {
     CollateralAsset,
     Market,
@@ -66,6 +66,7 @@ export function getOrCreateMarketCollateralBalance(
         collateralBalance.market = collateral.market;
         collateralBalance.collateralAsset = collateral.id;
         collateralBalance.balance = ZERO_BI;
+        collateralBalance.reserves = ZERO_BI;
 
         collateralBalance.save();
     }
@@ -97,20 +98,37 @@ export function getOrCreatePositionCollateralBalance(
     return collateralBalance;
 }
 
-export function updateMarketCollateralBalance(
+export function updateMarketCollateral(
+    market: Market,
+    collateralAsset: CollateralAsset,
     marketCollateralBalance: MarketCollateralBalance,
-    deltaBalance: BigInt,
     event: ethereum.Event
 ): void {
+    const comet = CometContract.bind(Address.fromBytes(market.cometProxy));
+    const totalsCollateral = comet.totalsCollateral(Address.fromBytes(collateralAsset.address));
+
+    log.warning("proxy: {}, asset: {}", [market.cometProxy.toHexString(), collateralAsset.address.toHexString()]);
+
     marketCollateralBalance.lastUpdatedBlockNumber = event.block.number;
-    marketCollateralBalance.balance = marketCollateralBalance.balance.plus(deltaBalance);
+    marketCollateralBalance.balance = totalsCollateral.getTotalSupplyAsset();
+
+    // TODO: this call is reverting
+    // marketCollateralBalance.reserves = comet.getCollateralReserves(Address.fromBytes(collateralAsset.address));
 }
 
-export function updatePositionCollateralBalance(
+export function updatePositionCollateral(
+    market: Market,
+    collateralAsset: CollateralAsset,
+    position: Position,
     positionCollateralBalance: PositionCollateralBalance,
-    deltaBalance: BigInt,
     event: ethereum.Event
 ): void {
+    const comet = CometContract.bind(Address.fromBytes(market.cometProxy));
+    const userCollateral = comet.userCollateral(
+        Address.fromBytes(position.account),
+        Address.fromBytes(collateralAsset.address)
+    );
+
     positionCollateralBalance.lastUpdatedBlockNumber = event.block.number;
-    positionCollateralBalance.balance = positionCollateralBalance.balance.plus(deltaBalance);
+    positionCollateralBalance.balance = userCollateral.getBalance();
 }

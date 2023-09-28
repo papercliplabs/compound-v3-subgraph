@@ -10,6 +10,8 @@ import {
     WithdrawCollateralMarketInteraction,
     TransferCollateralMarketInteraction,
     AbsorbCollateralMarketInteraction,
+    BuyCollateralMarketInteraction,
+    WithdrawReservesMarketInteraction,
 } from "../../generated/schema";
 import { ZERO_BD } from "../common/constants";
 
@@ -30,6 +32,10 @@ export function createSupplyBaseMarketInteraction(
 
     interaction.from = from;
     interaction.to = market.id;
+
+    interaction.gasLimit = event.transaction.gasLimit;
+    interaction.gasPrice = event.transaction.gasPrice;
+    interaction.gasUsed = event.receipt ? event.receipt!.gasUsed : null;
 
     interaction.market = market.id;
     interaction.position = position.id;
@@ -58,6 +64,10 @@ export function createWithdrawBaseMarketInteraction(
 
     interaction.from = market.id;
     interaction.to = to;
+
+    interaction.gasLimit = event.transaction.gasLimit;
+    interaction.gasPrice = event.transaction.gasPrice;
+    interaction.gasUsed = event.receipt ? event.receipt!.gasUsed : null;
 
     interaction.market = market.id;
     interaction.position = position.id;
@@ -88,6 +98,10 @@ export function createAbsorbDebtMarketInteraction(
     // Just internal accounting to have reserves cover bad debt, and protocol takes collateral ownership
     interaction.from = market.id;
     interaction.to = market.id;
+
+    interaction.gasLimit = event.transaction.gasLimit;
+    interaction.gasPrice = event.transaction.gasPrice;
+    interaction.gasUsed = event.receipt ? event.receipt!.gasUsed : null;
 
     interaction.market = market.id;
     interaction.position = position.id;
@@ -120,6 +134,10 @@ export function createSupplyCollateralMarketInteraction(
     interaction.from = from;
     interaction.to = market.id;
 
+    interaction.gasLimit = event.transaction.gasLimit;
+    interaction.gasPrice = event.transaction.gasPrice;
+    interaction.gasUsed = event.receipt ? event.receipt!.gasUsed : null;
+
     interaction.market = market.id;
     interaction.position = position.id;
 
@@ -148,6 +166,10 @@ export function createWithdrawCollateralMarketInteraction(
 
     interaction.from = market.id;
     interaction.to = to;
+
+    interaction.gasLimit = event.transaction.gasLimit;
+    interaction.gasPrice = event.transaction.gasPrice;
+    interaction.gasUsed = event.receipt ? event.receipt!.gasUsed : null;
 
     interaction.market = market.id;
     interaction.position = position.id;
@@ -178,6 +200,10 @@ export function createTransferCollateralMarketInteraction(
     // Not value moved, stayed within the market
     interaction.from = market.id;
     interaction.to = market.id;
+
+    interaction.gasLimit = event.transaction.gasLimit;
+    interaction.gasPrice = event.transaction.gasPrice;
+    interaction.gasUsed = event.receipt ? event.receipt!.gasUsed : null;
 
     interaction.market = market.id;
     interaction.fromPosition = fromPosition.id;
@@ -210,6 +236,10 @@ export function createAbsorbCollateralMarketInteraction(
     interaction.from = market.id;
     interaction.to = market.id;
 
+    interaction.gasLimit = event.transaction.gasLimit;
+    interaction.gasPrice = event.transaction.gasPrice;
+    interaction.gasUsed = event.receipt ? event.receipt!.gasUsed : null;
+
     interaction.market = market.id;
     interaction.position = position.id;
 
@@ -218,6 +248,70 @@ export function createAbsorbCollateralMarketInteraction(
     interaction.amountUsd = ZERO_BD; // TODO
 
     interaction.absorber = absorber;
+
+    interaction.save();
+}
+
+export function createBuyCollateralMarketInteraction(
+    market: Market,
+    buyer: Address,
+    asset: CollateralAsset,
+    collateralAmount: BigInt,
+    baseAmount: BigInt,
+    event: ethereum.Event
+): void {
+    const id = event.transaction.hash.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
+    const interaction = new BuyCollateralMarketInteraction(id);
+
+    interaction.hash = event.transaction.hash;
+    interaction.logIndex = event.logIndex;
+    interaction.blockNumber = event.block.number;
+    interaction.timestamp = event.block.timestamp;
+
+    // Not value moved, stayed within the market
+    interaction.from = market.id;
+    interaction.to = buyer;
+
+    interaction.gasLimit = event.transaction.gasLimit;
+    interaction.gasPrice = event.transaction.gasPrice;
+    interaction.gasUsed = event.receipt ? event.receipt!.gasUsed : null;
+
+    interaction.market = market.id;
+
+    interaction.asset = asset.id;
+    interaction.collateralAmount = collateralAmount;
+    interaction.baseAmount = baseAmount;
+    interaction.amountUsd = ZERO_BD; // TODO
+
+    interaction.save();
+}
+
+export function createWithdrawReservesMarketInteraction(
+    market: Market,
+    to: Address,
+    amount: BigInt,
+    event: ethereum.Event
+): void {
+    const id = event.transaction.hash.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
+    const interaction = new WithdrawReservesMarketInteraction(id);
+
+    interaction.hash = event.transaction.hash;
+    interaction.logIndex = event.logIndex;
+    interaction.blockNumber = event.block.number;
+    interaction.timestamp = event.block.timestamp;
+
+    // Not value moved, stayed within the market
+    interaction.from = market.id;
+    interaction.to = to;
+
+    interaction.gasLimit = event.transaction.gasLimit;
+    interaction.gasPrice = event.transaction.gasPrice;
+    interaction.gasUsed = event.receipt ? event.receipt!.gasUsed : null;
+
+    interaction.market = market.id;
+
+    interaction.amount = amount;
+    interaction.amountUsd = ZERO_BD; // TODO
 
     interaction.save();
 }
