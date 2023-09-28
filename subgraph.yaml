@@ -13,9 +13,7 @@ dataSources:
           kind: ethereum/events
           apiVersion: 0.0.7
           language: wasm/assemblyscript
-          entities:
-              - Protocol
-              - Market
+          entities: []
           abis:
               - name: Configurator
                 file: ./abis/Configurator.json
@@ -35,9 +33,7 @@ templates:
           kind: ethereum/events
           apiVersion: 0.0.7
           language: wasm/assemblyscript
-          entities:
-              - Protocol
-              - Market
+          entities: []
           abis:
               - name: Comet
                 file: ./abis/Comet.json
@@ -50,5 +46,16 @@ templates:
                 handler: handleUpgraded
               - event: Supply(indexed address,indexed address,uint256)
                 handler: handleSupply
-
+              - event: Withdraw(indexed address,indexed address,uint256)
+                handler: handleWithdraw
+              - event: AbsorbDebt(indexed address,indexed address,uint256,uint256)
+                handler: handleAbsorbDebt
+              - event: SupplyCollateral(indexed address,indexed address,indexed address,uint256)
+                handler: handleSupplyCollateral
+              - event: WithdrawCollateral(indexed address,indexed address,indexed address,uint256)
+                handler: handleWithdrawCollateral
+              - event: TransferCollateral(indexed address,indexed address,indexed address,uint256)
+                handler: handleTransferCollateral
+              - event: AbsorbCollateral(indexed address,indexed address,indexed address,uint256,uint256)
+                handler: handleAbsorbCollateral
           file: ./src/mappings/comet.ts

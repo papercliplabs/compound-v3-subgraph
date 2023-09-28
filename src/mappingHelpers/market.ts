@@ -1,33 +1,24 @@
-import { Address, ethereum, BigInt } from "@graphprotocol/graph-ts";
+import { Address, ethereum } from "@graphprotocol/graph-ts";
 import { BaseAsset, CollateralAsset, Market } from "../../generated/schema";
 import { Comet as CometContract } from "../../generated/templates/Comet/Comet";
 import { Configurator as ConfiguratorContract } from "../../generated/templates/Comet/Configurator";
 import { Erc20 as Erc20Contract } from "../../generated/templates/Comet/Erc20";
-import { CONFIGURATOR_PROXY_ADDRESS, ZERO_BI } from "../common/constants";
+import { CONFIGURATOR_PROXY_ADDRESS } from "../common/constants";
 import { bigDecimalSafeDiv, computeApr, formatUnits, presentValue } from "../common/utils";
+import { getOrCreateCollateralAsset, updateCollateralAssetConfig } from "./collateral";
 
 export function getOrCreateMarket(marketId: Address, event: ethereum.Event): Market {
     let market = Market.load(marketId);
 
     if (!market) {
         market = new Market(marketId);
-        const configurator = ConfiguratorContract.bind(CONFIGURATOR_PROXY_ADDRESS);
 
         market.cometProxy = marketId;
         market.protocol = CONFIGURATOR_PROXY_ADDRESS;
         market.creationBlockNumber = event.block.number;
-        market.factory = configurator.factory(Address.fromBytes(market.id));
 
         updateMarketConfiguration(market, event);
-
-        updateMarketIndices(market, event);
-
-        // Set all accounting inputs
-        market.lastAccountingUpdatedBlockNumber = event.block.number;
-        market.totalBasePrincipalSupply = ZERO_BI;
-        market.totalBasePrincipalBorrow = ZERO_BI;
-
-        updateMarketDerivedAccounting(market, event);
+        updateMarketAccounting(market, event);
 
         market.save();
     }
@@ -40,6 +31,7 @@ export function updateMarketConfiguration(market: Market, event: ethereum.Event)
     const configurator = ConfiguratorContract.bind(Address.fromBytes(market.protocol));
 
     market.lastConfigurationUpdateBlockNumber = event.block.number;
+    market.factory = configurator.factory(Address.fromBytes(market.id));
     market.governor = comet.governor();
     market.pauseGuardian = comet.pauseGuardian();
     market.extensionDelegate = comet.extensionDelegate();
@@ -85,52 +77,32 @@ export function updateMarketConfiguration(market: Market, event: ethereum.Event)
     market.baseAsset = baseAsset.id;
 
     // Collateral assets
-
-    // Not ideal as it is possible config changed and is not deployed and updated yet, but unlikely as proposals redeploy + update
-    const config = configurator.getConfiguration(Address.fromBytes(market.id));
-    for (let i = 0; i < config.assetConfigs.length; i++) {
-        const assetConfig = config.assetConfigs[i];
-
-        const collateralAssetId = market.id.concat(assetConfig.asset);
-        let collateralAsset = CollateralAsset.load(collateralAssetId);
-
-        if (!collateralAsset) {
-            collateralAsset = new CollateralAsset(collateralAssetId);
-
-            const collateralAssetContract = Erc20Contract.bind(assetConfig.asset);
-
-            collateralAsset.address = assetConfig.asset;
-            collateralAsset.name = collateralAssetContract.name();
-            collateralAsset.symbol = collateralAssetContract.symbol();
-            collateralAsset.decimals = collateralAssetContract.decimals();
-            collateralAsset.market = market.id;
-
-            collateralAsset.balance = ZERO_BI;
-        }
-        collateralAsset.priceFeed = assetConfig.priceFeed;
-        collateralAsset.borrowCollateralFactor = formatUnits(assetConfig.borrowCollateralFactor, 18);
-        collateralAsset.liquidateCollateralFactor = formatUnits(assetConfig.liquidateCollateralFactor, 18);
-        collateralAsset.liquidationFactor = formatUnits(assetConfig.liquidationFactor, 18);
-        collateralAsset.supplyCap = assetConfig.supplyCap;
-
+    const numCollateralAssets = comet.numAssets();
+    for (let i = 0; i < numCollateralAssets; i++) {
+        const assetInfo = comet.getAssetInfo(i);
+        const collateralAsset = getOrCreateCollateralAsset(market, assetInfo.asset, event);
+        updateCollateralAssetConfig(collateralAsset);
         collateralAsset.save();
     }
 }
 
-export function updateMarketIndices(market: Market, event: ethereum.Event): void {
+export function updateMarketAccounting(market: Market, event: ethereum.Event): void {
     const comet = CometContract.bind(Address.fromBytes(market.id));
+
     const totalsBasic = comet.totalsBasic();
+
+    market.lastAccountingUpdatedBlockNumber = event.block.number;
 
     market.baseSupplyIndex = totalsBasic.baseSupplyIndex;
     market.baseBorrowIndex = totalsBasic.baseBorrowIndex;
     market.trackingSupplyIndex = totalsBasic.trackingSupplyIndex;
     market.trackingBorrowIndex = totalsBasic.trackingBorrowIndex;
     market.lastAccrualTime = totalsBasic.lastAccrualTime;
-}
 
-export function updateMarketDerivedAccounting(market: Market, event: ethereum.Event): void {
-    market.lastAccountingUpdatedBlockNumber = event.block.number;
+    market.totalBasePrincipalSupply = totalsBasic.totalSupplyBase;
+    market.totalBasePrincipalBorrow = totalsBasic.totalBorrowBase;
 
+    // Derived
     market.totalBaseSupply = presentValue(market.totalBasePrincipalSupply, market.baseSupplyIndex);
     market.totalBaseBorrow = presentValue(market.totalBasePrincipalBorrow, market.baseBorrowIndex);
 

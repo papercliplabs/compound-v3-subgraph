@@ -24,7 +24,12 @@ export function parseUnits(value: BigDecimal, exponent: u8): BigInt {
     const powerTerm = BigInt.fromU32(10)
         .pow(exponent)
         .toBigDecimal();
-    return BigInt.fromString(value.times(powerTerm).toString());
+    return BigInt.fromString(
+        value
+            .times(powerTerm)
+            .truncate(0)
+            .toString()
+    );
 }
 
 /**

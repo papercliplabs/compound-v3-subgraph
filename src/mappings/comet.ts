@@ -1,16 +1,31 @@
 import {
+    Upgraded as UpgradedEvent,
     Supply as SupplyEvent,
     Withdraw as WithdrawEvent,
-    Upgraded as UpgradedEvent,
+    AbsorbDebt as AbsorbDebtEvent,
+    SupplyCollateral as SupplyCollateralEvent,
+    WithdrawCollateral as WithdrawCollateralEvent,
+    TransferCollateral as TransferCollateralEvent,
+    AbsorbCollateral as AbsorbCollateralEvent,
 } from "../../generated/templates/Comet/Comet";
+import { getOrCreateMarket, updateMarketAccounting, updateMarketConfiguration } from "../mappingHelpers/market";
+import { getOrCreatePosition, updatePosition } from "../mappingHelpers/position";
 import {
-    getOrCreateMarket,
-    updateMarketConfiguration,
-    updateMarketDerivedAccounting,
-    updateMarketIndices,
-} from "../mappingHelpers/market";
-import { getOrCreatePosition, updatePositionPrincipal } from "../mappingHelpers/position";
-import { createSupplyBaseMarketInteraction } from "../mappingHelpers/marketInteraction";
+    createSupplyBaseMarketInteraction,
+    createWithdrawBaseMarketInteraction,
+    createAbsorbDebtMarketInteraction,
+    createSupplyCollateralMarketInteraction,
+    createWithdrawCollateralMarketInteraction,
+    createTransferCollateralMarketInteraction,
+    createAbsorbCollateralMarketInteraction,
+} from "../mappingHelpers/marketInteraction";
+import {
+    getOrCreateCollateralAsset,
+    getOrCreateMarketCollateralBalance,
+    getOrCreatePositionCollateralBalance,
+    updateMarketCollateralBalance,
+    updatePositionCollateralBalance,
+} from "../mappingHelpers/collateral";
 
 export function handleUpgraded(event: UpgradedEvent): void {
     // Create market if not yet made
@@ -19,71 +34,144 @@ export function handleUpgraded(event: UpgradedEvent): void {
     // Trigger the market to update its configuration
     updateMarketConfiguration(market, event);
 
+    // Cannot read from contract since need to read memory slot since only owner can read proxy
     market.cometImplementation = event.params.implementation;
     market.save();
 }
 
 export function handleSupply(event: SupplyEvent): void {
-    ////
-    // Inputs
-    ////
     const owner = event.params.dst;
-    const supplyAmount = event.params.amount;
+    const amount = event.params.amount;
+    const from = event.params.from;
 
     const market = getOrCreateMarket(event.address, event);
     const position = getOrCreatePosition(market, owner, event);
 
-    // NEW METHOD
-    // 1) updateMarket: a bunch of contract calls
-    // 2) updatePosition: update principal + balance (add to position), use contact calls
-    // 3) createSupplyMarketInteraction: no principal here
+    updateMarketAccounting(market, event);
+    updatePosition(position, event);
+    createSupplyBaseMarketInteraction(market, position, from, amount, event);
 
-    ////
-    // Update interest indices, must come before everything else
-    ////
-    updateMarketIndices(market, event);
-
-    ////
-    // Update position - note that supply can increase only, and borrow can decrease only so we don't need signs
-    ////
-    const updatePositionRet = updatePositionPrincipal(
-        position,
-        supplyAmount,
-        false,
-        market.baseBorrowIndex,
-        market.baseSupplyIndex,
-        event
-    );
-
-    ////
-    // Create interaction - supplyPrincipalChange can't be negative here since we added to supply
-    ////
-    createSupplyBaseMarketInteraction(
-        market,
-        position,
-        supplyAmount,
-        updatePositionRet.supplyPrincipalChange,
-        updatePositionRet.borrowPrincipalChange,
-        owner,
-        event
-    );
-
-    ////
-    // Apply updates
-    ////
-    market.totalBasePrincipalSupply = market.totalBasePrincipalSupply.plus(updatePositionRet.supplyPrincipalChange);
-    market.totalBasePrincipalBorrow = market.totalBasePrincipalBorrow.minus(updatePositionRet.borrowPrincipalChange);
-
-    ////
-    // Update accounting
-    ////
-    updateMarketDerivedAccounting(market, event);
-
-    ////
-    // Save
-    ////
     position.save();
     market.save();
 }
 
-export function handleWithdraw(event: WithdrawEvent): void {}
+export function handleWithdraw(event: WithdrawEvent): void {
+    const owner = event.params.src;
+    const amount = event.params.amount;
+
+    const market = getOrCreateMarket(event.address, event);
+    const position = getOrCreatePosition(market, owner, event);
+
+    updateMarketAccounting(market, event);
+    updatePosition(position, event);
+    createWithdrawBaseMarketInteraction(market, position, event.params.src, amount, event);
+
+    position.save();
+    market.save();
+}
+
+export function handleAbsorbDebt(event: AbsorbDebtEvent): void {
+    const owner = event.params.borrower;
+    const amount = event.params.basePaidOut;
+    const absorber = event.params.absorber;
+
+    const market = getOrCreateMarket(event.address, event);
+    const position = getOrCreatePosition(market, owner, event);
+
+    updateMarketAccounting(market, event);
+    updatePosition(position, event);
+    createAbsorbDebtMarketInteraction(market, position, absorber, amount, event);
+
+    position.save();
+    market.save();
+}
+
+export function handleSupplyCollateral(event: SupplyCollateralEvent): void {
+    const owner = event.params.dst;
+    const amount = event.params.amount;
+    const from = event.params.from;
+    const assetAddress = event.params.asset;
+
+    const market = getOrCreateMarket(event.address, event);
+    const position = getOrCreatePosition(market, owner, event);
+    const collateralAsset = getOrCreateCollateralAsset(market, assetAddress, event);
+
+    const marketCollateralBalance = getOrCreateMarketCollateralBalance(collateralAsset, event);
+    const positionCollateralBalance = getOrCreatePositionCollateralBalance(collateralAsset, position, event);
+
+    updateMarketCollateralBalance(marketCollateralBalance, amount, event);
+    updatePositionCollateralBalance(positionCollateralBalance, amount, event);
+
+    createSupplyCollateralMarketInteraction(market, position, from, collateralAsset, amount, event);
+
+    marketCollateralBalance.save();
+    positionCollateralBalance.save();
+}
+
+export function handleWithdrawCollateral(event: WithdrawCollateralEvent): void {
+    const owner = event.params.src;
+    const amount = event.params.amount.neg();
+    const to = event.params.to;
+    const assetAddress = event.params.asset;
+
+    const market = getOrCreateMarket(event.address, event);
+    const position = getOrCreatePosition(market, owner, event);
+    const collateralAsset = getOrCreateCollateralAsset(market, assetAddress, event);
+
+    const marketCollateralBalance = getOrCreateMarketCollateralBalance(collateralAsset, event);
+    const positionCollateralBalance = getOrCreatePositionCollateralBalance(collateralAsset, position, event);
+
+    updateMarketCollateralBalance(marketCollateralBalance, amount, event);
+    updatePositionCollateralBalance(positionCollateralBalance, amount, event);
+
+    createWithdrawCollateralMarketInteraction(market, position, to, collateralAsset, amount.neg(), event);
+
+    marketCollateralBalance.save();
+    positionCollateralBalance.save();
+}
+
+export function handleTransferCollateral(event: TransferCollateralEvent): void {
+    const from = event.params.from;
+    const to = event.params.to;
+    const assetAddress = event.params.asset;
+    const amount = event.params.amount;
+
+    const market = getOrCreateMarket(event.address, event);
+    const collateralAsset = getOrCreateCollateralAsset(market, assetAddress, event);
+
+    const fromPosition = getOrCreatePosition(market, from, event);
+    const toPosition = getOrCreatePosition(market, to, event);
+
+    const fromPositionCollateralBalance = getOrCreatePositionCollateralBalance(collateralAsset, fromPosition, event);
+    const toPositionCollateralBalance = getOrCreatePositionCollateralBalance(collateralAsset, toPosition, event);
+
+    updatePositionCollateralBalance(fromPositionCollateralBalance, amount.neg(), event);
+    updatePositionCollateralBalance(toPositionCollateralBalance, amount, event);
+
+    createTransferCollateralMarketInteraction(market, fromPosition, toPosition, collateralAsset, amount, event);
+
+    fromPositionCollateralBalance.save();
+    toPositionCollateralBalance.save();
+}
+
+export function handleAbsorbCollateral(event: AbsorbCollateralEvent): void {
+    const absorber = event.params.absorber;
+    const owner = event.params.borrower;
+    const assetAddress = event.params.asset;
+    const amount = event.params.collateralAbsorbed;
+
+    const market = getOrCreateMarket(event.address, event);
+    const collateralAsset = getOrCreateCollateralAsset(market, assetAddress, event);
+    const position = getOrCreatePosition(market, owner, event);
+
+    const marketCollateralBalance = getOrCreateMarketCollateralBalance(collateralAsset, event);
+    const positionCollateralBalance = getOrCreatePositionCollateralBalance(collateralAsset, position, event);
+
+    updateMarketCollateralBalance(marketCollateralBalance, amount.neg(), event);
+    updatePositionCollateralBalance(positionCollateralBalance, amount.neg(), event);
+
+    createAbsorbCollateralMarketInteraction(market, position, absorber, collateralAsset, amount, event);
+
+    positionCollateralBalance.save();
+    marketCollateralBalance.save();
+}
