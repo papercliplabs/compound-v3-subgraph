@@ -6,7 +6,7 @@ import {
     WithdrawBaseMarketInteraction,
     AbsorbDebtMarketInteraction,
     SupplyCollateralMarketInteraction,
-    CollateralAsset,
+    CollateralToken,
     WithdrawCollateralMarketInteraction,
     TransferCollateralMarketInteraction,
     AbsorbCollateralMarketInteraction,
@@ -40,7 +40,7 @@ export function createSupplyBaseMarketInteraction(
     interaction.market = market.id;
     interaction.position = position.id;
 
-    interaction.asset = market.baseAsset;
+    interaction.asset = market.baseToken;
     interaction.amount = amount;
     interaction.amountUsd = ZERO_BD; // TODO
 
@@ -72,7 +72,7 @@ export function createWithdrawBaseMarketInteraction(
     interaction.market = market.id;
     interaction.position = position.id;
 
-    interaction.asset = market.baseAsset;
+    interaction.asset = market.baseToken;
     interaction.amount = amount;
     interaction.amountUsd = ZERO_BD; // TODO
 
@@ -106,7 +106,7 @@ export function createAbsorbDebtMarketInteraction(
     interaction.market = market.id;
     interaction.position = position.id;
 
-    interaction.asset = market.baseAsset;
+    interaction.asset = market.baseToken;
     interaction.amount = amount;
     interaction.amountUsd = ZERO_BD; // TODO
 
@@ -119,7 +119,7 @@ export function createSupplyCollateralMarketInteraction(
     market: Market,
     position: Position,
     from: Address,
-    asset: CollateralAsset,
+    asset: CollateralToken,
     amount: BigInt,
     event: ethereum.Event
 ): void {
@@ -152,7 +152,7 @@ export function createWithdrawCollateralMarketInteraction(
     market: Market,
     position: Position,
     to: Address,
-    asset: CollateralAsset,
+    asset: CollateralToken,
     amount: BigInt,
     event: ethereum.Event
 ): void {
@@ -185,7 +185,7 @@ export function createTransferCollateralMarketInteraction(
     market: Market,
     fromPosition: Position,
     toPosition: Position,
-    asset: CollateralAsset,
+    asset: CollateralToken,
     amount: BigInt,
     event: ethereum.Event
 ): void {
@@ -220,7 +220,7 @@ export function createAbsorbCollateralMarketInteraction(
     market: Market,
     position: Position,
     absorber: Address,
-    asset: CollateralAsset,
+    asset: CollateralToken,
     amount: BigInt,
     event: ethereum.Event
 ): void {
@@ -255,7 +255,7 @@ export function createAbsorbCollateralMarketInteraction(
 export function createBuyCollateralMarketInteraction(
     market: Market,
     buyer: Address,
-    asset: CollateralAsset,
+    asset: CollateralToken,
     collateralAmount: BigInt,
     baseAmount: BigInt,
     event: ethereum.Event

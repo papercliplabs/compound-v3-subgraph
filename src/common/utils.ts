@@ -1,5 +1,7 @@
-import { BigDecimal, BigInt } from "@graphprotocol/graph-ts";
-import { BASE_INDEX_SCALE, SECONDS_PER_YEAR, ZERO_BD, ZERO_BI } from "./constants";
+import { Address, BigDecimal, BigInt } from "@graphprotocol/graph-ts";
+import { BASE_INDEX_SCALE, COMET_REWARDS_ADDRESS, SECONDS_PER_YEAR, ZERO_BD, ZERO_BI } from "./constants";
+import { CometRewardsV1 as CometRewardsV1Contract } from "../../generated/templates/Comet/CometRewardsV1";
+import { CometRewardsV2 as CometRewardsV2Contract } from "../../generated/templates/Comet/CometRewardsV2";
 
 /**
  * Divides a value by a given exponent of base 10 (10^exponent), and formats it as a BigDecimal
@@ -137,5 +139,39 @@ export function bigIntSafeDiv(num: BigInt, den: BigInt): BigInt {
         return ZERO_BI;
     } else {
         return num.div(den);
+    }
+}
+
+class RewardConfigData {
+    tokenAddress: Address;
+    rescaleFactor: BigInt;
+    shouldUpscale: boolean;
+    multiplier: BigInt;
+}
+
+export function getRewardConfigData(marketAddress: Address): RewardConfigData {
+    const cometRewardsV1 = CometRewardsV1Contract.bind(COMET_REWARDS_ADDRESS);
+    const cometRewardsV2 = CometRewardsV2Contract.bind(COMET_REWARDS_ADDRESS);
+
+    // Reward, note that there are 2 versions, first one didn't have multiplier
+    let tryRewardConfig = cometRewardsV2.try_rewardConfig(marketAddress);
+    if (tryRewardConfig.reverted) {
+        // It is V1 instead
+        const rewardConfig = cometRewardsV1.rewardConfig(marketAddress);
+        return {
+            tokenAddress: rewardConfig.getToken(),
+            rescaleFactor: rewardConfig.getRescaleFactor(),
+            shouldUpscale: rewardConfig.getShouldUpscale(),
+            multiplier: ZERO_BI,
+        };
+    } else {
+        // V2
+        const rewardConfig = tryRewardConfig.value;
+        return {
+            tokenAddress: rewardConfig.getToken(),
+            rescaleFactor: rewardConfig.getRescaleFactor(),
+            shouldUpscale: rewardConfig.getShouldUpscale(),
+            multiplier: rewardConfig.getMultiplier(),
+        };
     }
 }

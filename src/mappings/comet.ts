@@ -25,12 +25,14 @@ import {
     createWithdrawReservesMarketInteraction,
 } from "../mappingHelpers/marketInteraction";
 import {
-    getOrCreateCollateralAsset,
     getOrCreateMarketCollateralBalance,
     getOrCreatePositionCollateralBalance,
-    updateMarketCollateral,
-    updatePositionCollateral,
-} from "../mappingHelpers/collateral";
+    updateMarketCollateralBalance,
+    updatePositionCollateralBalance,
+} from "../mappingHelpers/collateralBalance";
+import { getOrCreateCollateralToken, getOrCreateToken } from "../mappingHelpers/token";
+import { updateProtocolUsageMetrics } from "../mappingHelpers/protocol";
+import { TransactionType } from "../common/constants";
 
 export function handleUpgraded(event: UpgradedEvent): void {
     // Create market if not yet made
@@ -55,7 +57,9 @@ export function handleSupply(event: SupplyEvent): void {
 
     updateMarketAccounting(market, event);
     updatePosition(position, event);
+
     createSupplyBaseMarketInteraction(market, position, from, amount, event);
+    updateProtocolUsageMetrics(account, TransactionType.SUPPLY_BASE, event);
 
     position.save();
     market.save();
@@ -71,7 +75,9 @@ export function handleWithdraw(event: WithdrawEvent): void {
 
     updateMarketAccounting(market, event);
     updatePosition(position, event);
+
     createWithdrawBaseMarketInteraction(market, position, event.params.src, amount, event);
+    updateProtocolUsageMetrics(account, TransactionType.WITHDRAW_BASE, event);
 
     position.save();
     market.save();
@@ -88,7 +94,9 @@ export function handleAbsorbDebt(event: AbsorbDebtEvent): void {
 
     updateMarketAccounting(market, event);
     updatePosition(position, event);
+
     createAbsorbDebtMarketInteraction(market, position, absorber, amount, event);
+    updateProtocolUsageMetrics(account, TransactionType.LIQUIDATION, event);
 
     position.save();
     market.save();
@@ -103,15 +111,17 @@ export function handleSupplyCollateral(event: SupplyCollateralEvent): void {
     const market = getOrCreateMarket(event.address, event);
     const account = getOrCreateAccount(ownerAddress, event);
     const position = getOrCreatePosition(market, account, event);
-    const collateralAsset = getOrCreateCollateralAsset(market, assetAddress, event);
+    const token = getOrCreateToken(assetAddress, event);
+    const collateralToken = getOrCreateCollateralToken(market, token, event);
 
-    const marketCollateralBalance = getOrCreateMarketCollateralBalance(collateralAsset, event);
-    const positionCollateralBalance = getOrCreatePositionCollateralBalance(collateralAsset, position, event);
+    const marketCollateralBalance = getOrCreateMarketCollateralBalance(collateralToken, event);
+    const positionCollateralBalance = getOrCreatePositionCollateralBalance(collateralToken, position, event);
 
-    updateMarketCollateral(market, collateralAsset, marketCollateralBalance, event);
-    updatePositionCollateral(market, collateralAsset, position, positionCollateralBalance, event);
+    updateMarketCollateralBalance(marketCollateralBalance, event);
+    updatePositionCollateralBalance(positionCollateralBalance, event);
 
-    createSupplyCollateralMarketInteraction(market, position, from, collateralAsset, amount, event);
+    createSupplyCollateralMarketInteraction(market, position, from, collateralToken, amount, event);
+    updateProtocolUsageMetrics(account, TransactionType.SUPPLY_COLLATERAL, event);
 
     marketCollateralBalance.save();
     positionCollateralBalance.save();
@@ -126,15 +136,17 @@ export function handleWithdrawCollateral(event: WithdrawCollateralEvent): void {
     const market = getOrCreateMarket(event.address, event);
     const account = getOrCreateAccount(ownerAddress, event);
     const position = getOrCreatePosition(market, account, event);
-    const collateralAsset = getOrCreateCollateralAsset(market, assetAddress, event);
+    const token = getOrCreateToken(assetAddress, event);
+    const collateralToken = getOrCreateCollateralToken(market, token, event);
 
-    const marketCollateralBalance = getOrCreateMarketCollateralBalance(collateralAsset, event);
-    const positionCollateralBalance = getOrCreatePositionCollateralBalance(collateralAsset, position, event);
+    const marketCollateralBalance = getOrCreateMarketCollateralBalance(collateralToken, event);
+    const positionCollateralBalance = getOrCreatePositionCollateralBalance(collateralToken, position, event);
 
-    updateMarketCollateral(market, collateralAsset, marketCollateralBalance, event);
-    updatePositionCollateral(market, collateralAsset, position, positionCollateralBalance, event);
+    updateMarketCollateralBalance(marketCollateralBalance, event);
+    updatePositionCollateralBalance(positionCollateralBalance, event);
 
-    createWithdrawCollateralMarketInteraction(market, position, to, collateralAsset, amount.neg(), event);
+    createWithdrawCollateralMarketInteraction(market, position, to, collateralToken, amount.neg(), event);
+    updateProtocolUsageMetrics(account, TransactionType.WITHDRAW_COLLATERAL, event);
 
     marketCollateralBalance.save();
     positionCollateralBalance.save();
@@ -149,18 +161,19 @@ export function handleTransferCollateral(event: TransferCollateralEvent): void {
     const market = getOrCreateMarket(event.address, event);
     const fromAccount = getOrCreateAccount(from, event);
     const toAccount = getOrCreateAccount(to, event);
-    const collateralAsset = getOrCreateCollateralAsset(market, assetAddress, event);
-
+    const token = getOrCreateToken(assetAddress, event);
+    const collateralToken = getOrCreateCollateralToken(market, token, event);
     const fromPosition = getOrCreatePosition(market, fromAccount, event);
     const toPosition = getOrCreatePosition(market, toAccount, event);
 
-    const fromPositionCollateralBalance = getOrCreatePositionCollateralBalance(collateralAsset, fromPosition, event);
-    const toPositionCollateralBalance = getOrCreatePositionCollateralBalance(collateralAsset, toPosition, event);
+    const fromPositionCollateralBalance = getOrCreatePositionCollateralBalance(collateralToken, fromPosition, event);
+    const toPositionCollateralBalance = getOrCreatePositionCollateralBalance(collateralToken, toPosition, event);
 
-    updatePositionCollateral(market, collateralAsset, fromPosition, fromPositionCollateralBalance, event);
-    updatePositionCollateral(market, collateralAsset, toPosition, toPositionCollateralBalance, event);
+    updatePositionCollateralBalance(fromPositionCollateralBalance, event);
+    updatePositionCollateralBalance(toPositionCollateralBalance, event);
 
-    createTransferCollateralMarketInteraction(market, fromPosition, toPosition, collateralAsset, amount, event);
+    createTransferCollateralMarketInteraction(market, fromPosition, toPosition, collateralToken, amount, event);
+    updateProtocolUsageMetrics(fromAccount, TransactionType.TRANSFER_COLLATERAL, event);
 
     fromPositionCollateralBalance.save();
     toPositionCollateralBalance.save();
@@ -173,17 +186,18 @@ export function handleAbsorbCollateral(event: AbsorbCollateralEvent): void {
     const amount = event.params.collateralAbsorbed;
 
     const market = getOrCreateMarket(event.address, event);
-    const collateralAsset = getOrCreateCollateralAsset(market, assetAddress, event);
     const account = getOrCreateAccount(ownerAddress, event);
     const position = getOrCreatePosition(market, account, event);
+    const token = getOrCreateToken(assetAddress, event);
+    const collateralToken = getOrCreateCollateralToken(market, token, event);
 
-    const marketCollateralBalance = getOrCreateMarketCollateralBalance(collateralAsset, event);
-    const positionCollateralBalance = getOrCreatePositionCollateralBalance(collateralAsset, position, event);
+    const marketCollateralBalance = getOrCreateMarketCollateralBalance(collateralToken, event);
+    const positionCollateralBalance = getOrCreatePositionCollateralBalance(collateralToken, position, event);
 
-    updateMarketCollateral(market, collateralAsset, marketCollateralBalance, event);
-    updatePositionCollateral(market, collateralAsset, position, positionCollateralBalance, event);
+    updateMarketCollateralBalance(marketCollateralBalance, event);
+    updatePositionCollateralBalance(positionCollateralBalance, event);
 
-    createAbsorbCollateralMarketInteraction(market, position, absorber, collateralAsset, amount, event);
+    createAbsorbCollateralMarketInteraction(market, position, absorber, collateralToken, amount, event);
 
     positionCollateralBalance.save();
     marketCollateralBalance.save();
@@ -196,12 +210,13 @@ export function handleBuyCollateral(event: BuyCollateralEvent): void {
     const baseAmount = event.params.baseAmount;
 
     const market = getOrCreateMarket(event.address, event);
-    const collateralAsset = getOrCreateCollateralAsset(market, assetAddress, event);
+    const token = getOrCreateToken(assetAddress, event);
+    const collateralToken = getOrCreateCollateralToken(market, token, event);
 
-    const marketCollateralBalance = getOrCreateMarketCollateralBalance(collateralAsset, event);
+    const marketCollateralBalance = getOrCreateMarketCollateralBalance(collateralToken, event);
 
-    updateMarketCollateral(market, collateralAsset, marketCollateralBalance, event);
-    createBuyCollateralMarketInteraction(market, buyer, collateralAsset, collateralAmount, baseAmount, event);
+    updateMarketCollateralBalance(marketCollateralBalance, event);
+    createBuyCollateralMarketInteraction(market, buyer, collateralToken, collateralAmount, baseAmount, event);
 
     marketCollateralBalance.save();
 }

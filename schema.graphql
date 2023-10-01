@@ -9,52 +9,53 @@ type Protocol @entity {
     configuratorProxy: Bytes!
     configuratorImplementation: Bytes
 
+    cumulativeUsage: Usage! 
+
     # Derived
     markets: [Market!] @derivedFrom(field: "protocol")
+
+    hourlyUsage: [ProtocolHourlyUsage!]! @derivedFrom(field: "protocol")
+    dailyUsage: [ProtocolDailyUsage!]! @derivedFrom(field: "protocol")
 }
 
 ####
-# Assets
+# Tokens
 ####
 
-interface Asset {
+type Token @entity {
+    "Address"
     id: Bytes!
 
     address: Bytes!
     name: String!
     symbol: String!
     decimals: Int!
-
-    market: Market!
-    priceFeed: Bytes!
 }
 
-type BaseAsset implements Asset @entity { 
-    "Comet proxy address + asset address"
-    id: Bytes!
-
-    address: Bytes!
-    name: String!
-    symbol: String!
-    decimals: Int!
-
-    market: Market!
-    priceFeed: Bytes!
-}
-
-type CollateralAsset implements Asset @entity { 
-    "Market ID + address"
+type BaseToken @entity { 
+    "market ID + token ID"
     id: Bytes!
 
     creationBlockNumber: BigInt!
-    address: Bytes!
-    name: String!
-    symbol: String!
-    decimals: Int!
-
     market: Market!
-    priceFeed: Bytes!
+    token: Token!
 
+    # Config
+    lastConfigUpdateBlockNumber: BigInt!
+    priceFeed: Bytes!
+}
+
+type CollateralToken @entity { 
+    "Market ID + token ID + 'Col'"
+    id: Bytes!
+
+    creationBlockNumber: BigInt!
+    market: Market!
+    token: Token!
+
+    # Config
+    lastConfigUpdateBlockNumber: BigInt!
+    priceFeed: Bytes!
     "Percent of collateral that can be borrowed against"
     borrowCollateralFactor: BigDecimal!
     "Percent of collateral that can be borrowed before the account becomes liquidate-able"
@@ -66,60 +67,45 @@ type CollateralAsset implements Asset @entity {
 }
 
 ####
-# Balances
+# Collateral Token Balances
 ####
 
 interface CollateralBalance {
-    ####
-    # On creation
-    ####
     id: Bytes!
-    collateralAsset: CollateralAsset!
     creationBlockNumber: BigInt!
+    collateralToken: CollateralToken!
 
-    ####
-    # On update
-    #### 
-    lastUpdatedBlockNumber: BigInt!
+    # Balance
+    lastUpdateBlockNumber: BigInt!
     balance: BigInt!
 }
 
 type MarketCollateralBalance implements CollateralBalance @entity {
-    ####
-    # On creation
-    ####
-    "Market id + collateral address + 'bal'"
+    "Market id + collateral address + 'BAL'"
     id: Bytes!
-    collateralAsset: CollateralAsset!
     creationBlockNumber: BigInt!
+    collateralToken: CollateralToken!
 
     "Market collateral is for"
     market: Market!
 
-    ####
-    # On update
-    #### 
-    lastUpdatedBlockNumber: BigInt!
+    # Balances
+    lastUpdateBlockNumber: BigInt!
     balance: BigInt!
     reserves: BigInt!
 }
 
 type PositionCollateralBalance implements CollateralBalance @entity {
-    ####
-    # On creation
-    ####
     "Position id + collateral address"
     id: Bytes!
-    collateralAsset: CollateralAsset!
     creationBlockNumber: BigInt!
+    collateralToken: CollateralToken!
 
     "Position collateral is for"
     position: Position!
 
-    ####
-    # On update
-    #### 
-    lastUpdatedBlockNumber: BigInt!
+    # Balance
+    lastUpdateBlockNumber: BigInt!
     balance: BigInt!
 }
 
@@ -141,7 +127,7 @@ type Market @entity {
     creationBlockNumber: BigInt!
 
     ####
-    # On configuration update
+    # Configuration
     ####
     cometImplementation: Bytes
 
@@ -170,10 +156,10 @@ type Market @entity {
 	baseBorrowMin: BigInt!
 	targetReserves: BigInt!
 
-    baseAsset: BaseAsset! 
+    baseToken: BaseToken! 
 
     ####
-    # On accounting update
+    # Accounting
     ####
     lastAccountingUpdatedBlockNumber: BigInt!
 
@@ -197,10 +183,16 @@ type Market @entity {
     supplyApr: BigDecimal!
     borrowApr: BigDecimal!
 
+    rewardSupplyApr: BigDecimal!
+    rewardBorrowApr: BigDecimal!
+
+    netSupplyApr: BigDecimal!
+    netBorrowApr: BigDecimal!
+
     ####
     # Derived
     ####
-    collateralAssets: [CollateralAsset!]! @derivedFrom(field: "market")
+    CollateralTokens: [CollateralToken!]! @derivedFrom(field: "market")
     collateralBalances: [MarketCollateralBalance!]! @derivedFrom(field: "market")
     positions: [Position!]! @derivedFrom(field: "market")
 
@@ -272,6 +264,49 @@ type Position @entity {
 }
 
 ####
+# Usage
+####
+
+type Usage @entity {
+    ""
+    id: Bytes!
+
+    protocol: Protocol!
+
+    uniqueUsersCount: BigInt!
+    transactionCount: BigInt!
+    supplyBaseCount: BigInt!
+    withdrawBaseCount: BigInt!
+    liquidationCount: BigInt!
+    supplyCollateralCount: BigInt!
+    withdrawCollateralCount: BigInt!
+    transferCollateralCount: BigInt!
+}
+
+type ProtocolHourlyUsage @entity {
+    "Days since unix epoche"
+    id: Bytes!
+    protocol: Protocol!
+    hour: BigInt!
+    usage: Usage!
+}
+
+type ProtocolDailyUsage @entity {
+    "usage ID + hour since unix epoche"
+    id: Bytes!
+    protocol: Protocol!
+    day: BigInt!
+    usage: Usage!
+}
+
+
+# Helper to track active accounts
+type _ActiveAccount @entity {
+    "Address + use case + id"
+    id: Bytes!
+}
+
+####
 # Interactions
 ####
 
@@ -332,7 +367,7 @@ type SupplyBaseMarketInteraction implements MarketInteraction @entity(immutable:
     market: Market!
     position: Position!
 
-    asset: BaseAsset!
+    asset: BaseToken!
     amount: BigInt!
     amountUsd: BigDecimal!
 }
@@ -358,7 +393,7 @@ type WithdrawBaseMarketInteraction implements MarketInteraction @entity(immutabl
     market: Market!
     position: Position!
 
-    asset: BaseAsset!
+    asset: BaseToken!
     amount: BigInt!
     amountUsd: BigDecimal!
 }
@@ -384,7 +419,7 @@ type AbsorbDebtMarketInteraction implements MarketInteraction @entity(immutable:
     market: Market!
     position: Position!
 
-    asset: BaseAsset!
+    asset: BaseToken!
     amount: BigInt!
     amountUsd: BigDecimal!
 
@@ -412,7 +447,7 @@ type SupplyCollateralMarketInteraction implements MarketInteraction @entity(immu
     market: Market!
     position: Position!
 
-    asset: CollateralAsset!
+    asset: CollateralToken!
     amount: BigInt!
     amountUsd: BigDecimal!
 }
@@ -438,7 +473,7 @@ type WithdrawCollateralMarketInteraction implements MarketInteraction @entity(im
     market: Market!
     position: Position!
 
-    asset: CollateralAsset!
+    asset: CollateralToken!
     amount: BigInt!
     amountUsd: BigDecimal!
 }
@@ -465,7 +500,7 @@ type TransferCollateralMarketInteraction implements MarketInteraction @entity(im
     fromPosition: Position!
     toPosition: Position!
 
-    asset: CollateralAsset!
+    asset: CollateralToken!
     amount: BigInt!
     amountUsd: BigDecimal!
 }
@@ -491,7 +526,7 @@ type AbsorbCollateralMarketInteraction implements MarketInteraction @entity(immu
     market: Market!
     position: Position!
 
-    asset: CollateralAsset!
+    asset: CollateralToken!
     amount: BigInt!
     amountUsd: BigDecimal!
 
@@ -518,7 +553,7 @@ type BuyCollateralMarketInteraction implements MarketInteraction @entity(immutab
 
     market: Market!
 
-    asset: CollateralAsset!
+    asset: CollateralToken!
     collateralAmount: BigInt!
     baseAmount: BigInt!
     amountUsd: BigDecimal!

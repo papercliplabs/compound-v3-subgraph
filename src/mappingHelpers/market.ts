@@ -1,11 +1,16 @@
 import { Address, ethereum } from "@graphprotocol/graph-ts";
-import { BaseAsset, CollateralAsset, Market } from "../../generated/schema";
+import { Market } from "../../generated/schema";
 import { Comet as CometContract } from "../../generated/templates/Comet/Comet";
 import { Configurator as ConfiguratorContract } from "../../generated/templates/Comet/Configurator";
-import { Erc20 as Erc20Contract } from "../../generated/templates/Comet/Erc20";
-import { CONFIGURATOR_PROXY_ADDRESS } from "../common/constants";
-import { bigDecimalSafeDiv, computeApr, formatUnits, presentValue } from "../common/utils";
-import { getOrCreateCollateralAsset, updateCollateralAssetConfig } from "./collateral";
+import { BLOCKS_PER_DAY, CONFIGURATOR_PROXY_ADDRESS, REWARD_FACTOR_SCALE, ZERO_BD } from "../common/constants";
+import { bigDecimalSafeDiv, computeApr, formatUnits, getRewardConfigData, presentValue } from "../common/utils";
+import {
+    getOrCreateBaseToken,
+    getOrCreateCollateralToken,
+    getOrCreateToken,
+    updateBaseTokenConfig,
+    updateCollateralTokenConfig,
+} from "./token";
 
 export function getOrCreateMarket(marketId: Address, event: ethereum.Event): Market {
     let market = Market.load(marketId);
@@ -55,34 +60,23 @@ export function updateMarketConfiguration(market: Market, event: ethereum.Event)
     market.baseBorrowMin = comet.baseBorrowMin();
     market.targetReserves = comet.targetReserves();
 
-    // Base asset
-    const baseAssetAddress = comet.baseToken();
-    const baseAssetId = market.id.concat(baseAssetAddress);
+    // Base token
+    const baseTokenAddress = comet.baseToken();
+    const token = getOrCreateToken(baseTokenAddress, event);
+    const baseToken = getOrCreateBaseToken(market, token, event);
+    updateBaseTokenConfig(baseToken, event);
+    baseToken.save();
 
-    let baseAsset = BaseAsset.load(baseAssetId);
-    if (!baseAsset) {
-        baseAsset = new BaseAsset(baseAssetId);
+    market.baseToken = baseToken.id;
 
-        const baseAssetContract = Erc20Contract.bind(baseAssetAddress);
-
-        baseAsset.address = baseAssetAddress;
-        baseAsset.name = baseAssetContract.name();
-        baseAsset.symbol = baseAssetContract.symbol();
-        baseAsset.decimals = baseAssetContract.decimals();
-        baseAsset.market = market.id;
-    }
-    baseAsset.priceFeed = comet.baseTokenPriceFeed();
-    baseAsset.save();
-
-    market.baseAsset = baseAsset.id;
-
-    // Collateral assets
-    const numCollateralAssets = comet.numAssets();
-    for (let i = 0; i < numCollateralAssets; i++) {
+    // Collateral tokens
+    const numCollateralTokens = comet.numAssets();
+    for (let i = 0; i < numCollateralTokens; i++) {
         const assetInfo = comet.getAssetInfo(i);
-        const collateralAsset = getOrCreateCollateralAsset(market, assetInfo.asset, event);
-        updateCollateralAssetConfig(collateralAsset);
-        collateralAsset.save();
+        const token = getOrCreateToken(assetInfo.asset, event);
+        const collateralToken = getOrCreateCollateralToken(market, token, event);
+        updateCollateralTokenConfig(collateralToken, event);
+        collateralToken.save();
     }
 }
 
@@ -90,6 +84,8 @@ export function updateMarketAccounting(market: Market, event: ethereum.Event): v
     const comet = CometContract.bind(Address.fromBytes(market.id));
 
     const totalsBasic = comet.totalsBasic();
+
+    const rewardConfigData = getRewardConfigData(Address.fromBytes(market.id));
 
     market.lastAccountingUpdatedBlockNumber = event.block.number;
 
@@ -128,4 +124,46 @@ export function updateMarketAccounting(market: Market, event: ethereum.Event): v
         market.borrowPerSecondInterestRateSlopeLow,
         market.borrowPerSecondInterestRateSlopeHigh
     );
+
+    if (rewardConfigData.tokenAddress == Address.zero()) {
+        // No rewards
+        market.rewardSupplyApr = ZERO_BD;
+        market.rewardBorrowApr = ZERO_BD;
+    } else {
+        const rewardToken = getOrCreateToken(rewardConfigData.tokenAddress, event);
+
+        const rewardRescaleFactor = rewardConfigData.rescaleFactor;
+        const shouldUpscale = rewardConfigData.shouldUpscale;
+        const rewardMultiplier = rewardConfigData.multiplier;
+
+        const baseTrackingSupplyPerDay = market.baseTrackingSupplySpeed.times(BLOCKS_PER_DAY);
+        const baseTrackingBorrowPerDay = market.baseTrackingBorrowSpeed.times(BLOCKS_PER_DAY);
+
+        if (shouldUpscale) {
+            const supplyRewardTokensPerDay = baseTrackingSupplyPerDay
+                .times(rewardRescaleFactor)
+                .times(rewardMultiplier)
+                .div(REWARD_FACTOR_SCALE);
+            const borrowRewardTokensPerDay = baseTrackingBorrowPerDay
+                .times(rewardRescaleFactor)
+                .times(rewardMultiplier)
+                .div(REWARD_FACTOR_SCALE);
+        } else {
+            const supplyRewardTokensPerDay = baseTrackingSupplyPerDay
+                .div(rewardRescaleFactor)
+                .times(rewardMultiplier)
+                .div(REWARD_FACTOR_SCALE);
+            const borrowRewardTokensPerDay = baseTrackingBorrowPerDay
+                .div(rewardRescaleFactor)
+                .times(rewardMultiplier)
+                .div(REWARD_FACTOR_SCALE);
+        }
+
+        // TODO: need prices to get the reward APY here
+        market.rewardSupplyApr = ZERO_BD;
+        market.rewardBorrowApr = ZERO_BD;
+    }
+
+    market.netSupplyApr = market.supplyApr.plus(market.rewardBorrowApr);
+    market.netBorrowApr = market.borrowApr.minus(market.rewardBorrowApr);
 }

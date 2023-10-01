@@ -23,6 +23,25 @@ dataSources:
               - event: SetFactory(indexed address,indexed address,indexed address)
                 handler: handleSetFactory
           file: ./src/mappings/configurator.ts
+    # - kind: ethereum
+    #   name: CometRewards
+    #   network: mainnet
+    #   source:
+    #       address: "0x1B0e765F6224C21223AeA2af16c1C46E38885a40"
+    #       abi: CometRewards
+    #       startBlock: 15331590
+    #   mapping:
+    #       kind: ethereum/events
+    #       apiVersion: 0.0.7
+    #       language: wasm/assemblyscript
+    #       entities: []
+    #       abis:
+    #           - name: CometRewards
+    #             file: ./abis/CometRewards.json
+    #       eventHandlers:
+    #           - event: RewardClaimed(indexed address,indexed address,indexed address,uint256)
+    #             handler: handleRewardClaimed
+    #       file: ./src/mappings/cometRewards.ts
 templates:
     - kind: ethereum
       name: Comet
@@ -41,6 +60,10 @@ templates:
                 file: ./abis/Configurator.json
               - name: Erc20
                 file: ./abis/Erc20.json
+              - name: CometRewardsV1
+                file: ./abis/CometRewardsV1.json
+              - name: CometRewardsV2
+                file: ./abis/CometRewardsV2.json
           eventHandlers:
               - event: Upgraded(indexed address)
                 handler: handleUpgraded
