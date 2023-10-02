@@ -190,6 +190,11 @@ type Market @entity {
     netBorrowApr: BigDecimal!
 
     ####
+    # Usage
+    ####
+    cumulativeUsage: Usage! 
+
+    ####
     # Derived
     ####
     CollateralTokens: [CollateralToken!]! @derivedFrom(field: "market")
@@ -203,6 +208,9 @@ type Market @entity {
     withdrawCollateralMarketInteractions: [WithdrawCollateralMarketInteraction!]! @derivedFrom(field: "market")
     transferCollateralMarketInteractions: [TransferCollateralMarketInteraction!]! @derivedFrom(field: "market")
     absorbCollateralMarketInteractions: [AbsorbCollateralMarketInteraction!]! @derivedFrom(field: "market") 
+
+    hourlyUsage: [MarketHourlyUsage!]! @derivedFrom(field: "market")
+    dailyUsage: [MarketDailyUsage!]! @derivedFrom(field: "market")
 }
 
 ####
@@ -295,6 +303,22 @@ type ProtocolDailyUsage @entity {
     "usage ID + hour since unix epoche"
     id: Bytes!
     protocol: Protocol!
+    day: BigInt!
+    usage: Usage!
+}
+
+type MarketHourlyUsage @entity {
+    "Days since unix epoche"
+    id: Bytes!
+    market: Market!
+    hour: BigInt!
+    usage: Usage!
+}
+
+type MarketDailyUsage @entity {
+    "usage ID + hour since unix epoche"
+    id: Bytes!
+    market: Market!
     day: BigInt!
     usage: Usage!
 }

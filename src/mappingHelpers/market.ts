@@ -1,4 +1,4 @@
-import { Address, ethereum } from "@graphprotocol/graph-ts";
+import { Address, Bytes, ethereum } from "@graphprotocol/graph-ts";
 import { Market } from "../../generated/schema";
 import { Comet as CometContract } from "../../generated/templates/Comet/Comet";
 import { Configurator as ConfiguratorContract } from "../../generated/templates/Comet/Configurator";
@@ -11,6 +11,7 @@ import {
     updateBaseTokenConfig,
     updateCollateralTokenConfig,
 } from "./token";
+import { getOrCreateUsage } from "./usage";
 
 export function getOrCreateMarket(marketId: Address, event: ethereum.Event): Market {
     let market = Market.load(marketId);
@@ -18,9 +19,13 @@ export function getOrCreateMarket(marketId: Address, event: ethereum.Event): Mar
     if (!market) {
         market = new Market(marketId);
 
+        const usage = getOrCreateUsage(Bytes.fromUTF8("MARKET_CUMULATIVE").concat(market.id));
+
         market.cometProxy = marketId;
         market.protocol = CONFIGURATOR_PROXY_ADDRESS;
         market.creationBlockNumber = event.block.number;
+
+        market.cumulativeUsage = usage.id;
 
         updateMarketConfiguration(market, event);
         updateMarketAccounting(market, event);
