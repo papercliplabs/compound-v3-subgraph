@@ -2,6 +2,7 @@ import { Address, BigDecimal, BigInt } from "@graphprotocol/graph-ts";
 import { BASE_INDEX_SCALE, COMET_REWARDS_ADDRESS, SECONDS_PER_YEAR, ZERO_BD, ZERO_BI } from "./constants";
 import { CometRewardsV1 as CometRewardsV1Contract } from "../../generated/templates/Comet/CometRewardsV1";
 import { CometRewardsV2 as CometRewardsV2Contract } from "../../generated/templates/Comet/CometRewardsV2";
+import { Token } from "../../generated/schema";
 
 /**
  * Divides a value by a given exponent of base 10 (10^exponent), and formats it as a BigDecimal
@@ -32,6 +33,10 @@ export function parseUnits(value: BigDecimal, exponent: u8): BigInt {
             .truncate(0)
             .toString()
     );
+}
+
+export function computeTokenValueUsd(input: BigInt, decimals: u8, priceUsd: BigDecimal): BigDecimal {
+    return formatUnits(input, decimals).times(priceUsd);
 }
 
 /**

@@ -1,8 +1,16 @@
-import { Address, Bytes, ethereum } from "@graphprotocol/graph-ts";
+import { Address, BigDecimal, Bytes, ethereum, log } from "@graphprotocol/graph-ts";
 import { Token, BaseToken, Market, CollateralToken } from "../../generated/schema";
 import { Erc20 as Erc20Contract } from "../../generated/templates/Comet/Erc20";
 import { Comet as CometContract } from "../../generated/templates/Comet/Comet";
 import { formatUnits } from "../common/utils";
+import {
+    CHAINLINK_ORACLE_ADDRESS,
+    CHAINLINK_USD_ADDRESS,
+    PRICE_FEED_FACTOR,
+    ZERO_BD,
+    ZERO_BI,
+} from "../common/constants";
+import { ChainlinkOracle as ChainlinkOracleContract } from "../../generated/templates/Comet/ChainlinkOracle";
 
 ////
 // Token
@@ -24,6 +32,9 @@ export function getOrCreateToken(address: Address, event: ethereum.Event): Token
         token.symbol = trySymbol.reverted ? "UNKNOWN" : trySymbol.value;
         token.decimals = erc20.decimals();
 
+        token.lastPriceBlockNumber = ZERO_BI;
+        token.lastPriceUsd = ZERO_BD;
+
         token.save();
     }
 
@@ -44,6 +55,9 @@ export function getOrCreateBaseToken(market: Market, token: Token, event: ethere
         baseToken.creationBlockNumber = event.block.number;
         baseToken.market = market.id;
         baseToken.token = token.id;
+
+        baseToken.lastPriceBlockNumber = ZERO_BI;
+        baseToken.lastPriceUsd = ZERO_BD;
 
         updateBaseTokenConfig(baseToken, event);
 
@@ -75,6 +89,9 @@ export function getOrCreateCollateralToken(market: Market, token: Token, event: 
         collateralToken.market = market.id;
         collateralToken.token = token.id;
 
+        collateralToken.lastPriceBlockNumber = ZERO_BI;
+        collateralToken.lastPriceUsd = ZERO_BD;
+
         updateCollateralTokenConfig(collateralToken, event);
 
         collateralToken.save();
@@ -93,4 +110,77 @@ export function updateCollateralTokenConfig(collateralToken: CollateralToken, ev
     collateralToken.liquidateCollateralFactor = formatUnits(assetInfo.liquidateCollateralFactor, 18);
     collateralToken.liquidationFactor = formatUnits(assetInfo.liquidationFactor, 18);
     collateralToken.supplyCap = assetInfo.supplyCap;
+}
+
+////
+// Price
+////
+
+function getTokenPriceWithGenericOracleUsd(token: Token, event: ethereum.Event): BigDecimal {
+    if (token.lastPriceBlockNumber != event.block.number) {
+        const chainlink = ChainlinkOracleContract.bind(CHAINLINK_ORACLE_ADDRESS);
+
+        const tryLatestRoundData = chainlink.try_latestRoundData(Address.fromBytes(token.id), CHAINLINK_USD_ADDRESS);
+
+        if (!tryLatestRoundData.reverted) {
+            const price = tryLatestRoundData.value.value1.toBigDecimal().div(PRICE_FEED_FACTOR);
+
+            token.lastPriceBlockNumber = event.block.number;
+            token.lastPriceUsd = price;
+            token.save();
+        }
+    }
+
+    return token.lastPriceUsd;
+}
+
+function getBaseTokenPriceUsd(token: BaseToken, event: ethereum.Event): BigDecimal {
+    if (token.lastPriceBlockNumber != event.block.number) {
+        const comet = CometContract.bind(Address.fromBytes(token.market));
+
+        const tryPrice = comet.try_getPrice(Address.fromBytes(token.priceFeed));
+
+        if (!tryPrice.reverted) {
+            const price = tryPrice.value.toBigDecimal().div(PRICE_FEED_FACTOR);
+
+            token.lastPriceBlockNumber = event.block.number;
+            token.lastPriceUsd = price;
+            token.save();
+        }
+    }
+
+    return token.lastPriceUsd;
+}
+
+function getCollateralTokenPriceUsd(token: CollateralToken, event: ethereum.Event): BigDecimal {
+    let price = token.lastPriceUsd;
+
+    if (token.lastPriceBlockNumber != event.block.number) {
+        const comet = CometContract.bind(token.market);
+
+        const tryPrice = comet.try_getPrice(token.priceFeed);
+
+        if (!tryPrice.reverted) {
+            const price = tryPrice.value.toBigDecimal().div(PRICE_FEED_FACTOR);
+
+            token.lastPriceBlockNumber = event.block.number;
+            token.lastPriceUsd = price;
+            token.save();
+        }
+    }
+
+    return price;
+}
+
+export function getTokenPriceUsd<T>(token: T, event: ethereum.Event): BigDecimal {
+    if (token instanceof Token) {
+        return getTokenPriceWithGenericOracleUsd(token, event);
+    } else if (token instanceof BaseToken) {
+        return getBaseTokenPriceUsd(token, event);
+    } else if (token instanceof CollateralToken) {
+        return getCollateralTokenPriceUsd(token, event);
+    } else {
+        log.warning("Invalid token type in getTokenPriceUsd: {}", [typeof token]);
+        return ZERO_BD;
+    }
 }

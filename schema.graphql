@@ -29,7 +29,11 @@ type Token @entity {
     address: Bytes!
     name: String!
     symbol: String!
-    decimals: Int!
+    decimals: Int
+
+    # Price
+    lastPriceUsd: BigDecimal!
+    lastPriceBlockNumber: BigInt!
 }
 
 type BaseToken @entity { 
@@ -43,6 +47,10 @@ type BaseToken @entity {
     # Config
     lastConfigUpdateBlockNumber: BigInt!
     priceFeed: Bytes!
+
+    # Price
+    lastPriceUsd: BigDecimal!
+    lastPriceBlockNumber: BigInt!
 }
 
 type CollateralToken @entity { 
@@ -64,6 +72,10 @@ type CollateralToken @entity {
     liquidationFactor: BigDecimal!
     "Max amount that can be supplied to protect the protocol against over exposure"
     supplyCap: BigInt!
+
+    # Price
+    lastPriceUsd: BigDecimal!
+    lastPriceBlockNumber: BigInt!
 }
 
 ####
@@ -182,6 +194,10 @@ type Market @entity {
     utilization: BigDecimal!
     supplyApr: BigDecimal!
     borrowApr: BigDecimal!
+
+    totalBaseSupplyUsd: BigDecimal!
+    totalBaseBorrowUsd: BigDecimal!
+    baseReserveBalanceUsd: BigDecimal!
 
     rewardSupplyApr: BigDecimal!
     rewardBorrowApr: BigDecimal!

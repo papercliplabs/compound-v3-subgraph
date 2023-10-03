@@ -64,6 +64,8 @@ templates:
                 file: ./abis/CometRewardsV1.json
               - name: CometRewardsV2
                 file: ./abis/CometRewardsV2.json
+              - name: ChainlinkOracle
+                file: ./abis/ChainlinkOracle.json
           eventHandlers:
               - event: Upgraded(indexed address)
                 handler: handleUpgraded

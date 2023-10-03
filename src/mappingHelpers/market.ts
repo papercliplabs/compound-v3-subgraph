@@ -1,10 +1,27 @@
 import { Address, Bytes, ethereum } from "@graphprotocol/graph-ts";
-import { Market } from "../../generated/schema";
+import { BaseToken, Market, Token } from "../../generated/schema";
 import { Comet as CometContract } from "../../generated/templates/Comet/Comet";
 import { Configurator as ConfiguratorContract } from "../../generated/templates/Comet/Configurator";
-import { BLOCKS_PER_DAY, CONFIGURATOR_PROXY_ADDRESS, REWARD_FACTOR_SCALE, ZERO_BD } from "../common/constants";
-import { bigDecimalSafeDiv, computeApr, formatUnits, getRewardConfigData, presentValue } from "../common/utils";
 import {
+    BLOCKS_PER_DAY,
+    CONFIGURATOR_PROXY_ADDRESS,
+    DAYS_PER_YEAR,
+    ONE_BD,
+    ONE_BI,
+    REWARD_FACTOR_SCALE,
+    ZERO_BD,
+    ZERO_BI,
+} from "../common/constants";
+import {
+    bigDecimalSafeDiv,
+    computeApr,
+    computeTokenValueUsd,
+    formatUnits,
+    getRewardConfigData,
+    presentValue,
+} from "../common/utils";
+import {
+    getTokenPriceUsd,
     getOrCreateBaseToken,
     getOrCreateCollateralToken,
     getOrCreateToken,
@@ -130,6 +147,19 @@ export function updateMarketAccounting(market: Market, event: ethereum.Event): v
         market.borrowPerSecondInterestRateSlopeHigh
     );
 
+    const baseToken = BaseToken.load(market.baseToken)!; // Guaranteed to exist
+    const baseTokenToken = Token.load(baseToken.token)!; // Guaranteed to exist
+    const baseTokenDecimals = u8(baseTokenToken.decimals);
+    const baseTokenPriceUsd = getTokenPriceUsd(baseToken, event);
+
+    market.totalBaseSupplyUsd = computeTokenValueUsd(market.totalBaseSupply, baseTokenDecimals, baseTokenPriceUsd);
+    market.totalBaseBorrowUsd = computeTokenValueUsd(market.totalBaseBorrow, baseTokenDecimals, baseTokenPriceUsd);
+    market.baseReserveBalanceUsd = computeTokenValueUsd(
+        market.baseReserveBalance,
+        baseTokenDecimals,
+        baseTokenPriceUsd
+    );
+
     if (rewardConfigData.tokenAddress == Address.zero()) {
         // No rewards
         market.rewardSupplyApr = ZERO_BD;
@@ -144,29 +174,50 @@ export function updateMarketAccounting(market: Market, event: ethereum.Event): v
         const baseTrackingSupplyPerDay = market.baseTrackingSupplySpeed.times(BLOCKS_PER_DAY);
         const baseTrackingBorrowPerDay = market.baseTrackingBorrowSpeed.times(BLOCKS_PER_DAY);
 
+        let supplyRewardTokensPerDay = ZERO_BI;
+        let borrowRewardTokensPerDay = ZERO_BI;
         if (shouldUpscale) {
-            const supplyRewardTokensPerDay = baseTrackingSupplyPerDay
+            supplyRewardTokensPerDay = baseTrackingSupplyPerDay
                 .times(rewardRescaleFactor)
                 .times(rewardMultiplier)
                 .div(REWARD_FACTOR_SCALE);
-            const borrowRewardTokensPerDay = baseTrackingBorrowPerDay
+            borrowRewardTokensPerDay = baseTrackingBorrowPerDay
                 .times(rewardRescaleFactor)
                 .times(rewardMultiplier)
                 .div(REWARD_FACTOR_SCALE);
         } else {
-            const supplyRewardTokensPerDay = baseTrackingSupplyPerDay
+            supplyRewardTokensPerDay = baseTrackingSupplyPerDay
                 .div(rewardRescaleFactor)
                 .times(rewardMultiplier)
                 .div(REWARD_FACTOR_SCALE);
-            const borrowRewardTokensPerDay = baseTrackingBorrowPerDay
+            borrowRewardTokensPerDay = baseTrackingBorrowPerDay
                 .div(rewardRescaleFactor)
                 .times(rewardMultiplier)
                 .div(REWARD_FACTOR_SCALE);
         }
 
-        // TODO: need prices to get the reward APY here
-        market.rewardSupplyApr = ZERO_BD;
-        market.rewardBorrowApr = ZERO_BD;
+        const rewardTokenPriceUsd = getTokenPriceUsd(rewardToken, event);
+
+        const supplyRewardTokenPerDayUsd = computeTokenValueUsd(
+            supplyRewardTokensPerDay,
+            u8(rewardToken.decimals),
+            rewardTokenPriceUsd
+        );
+        const rewardSupplyYieldPerDay = market.totalBaseSupply.gt(market.baseMinForRewards)
+            ? bigDecimalSafeDiv(supplyRewardTokenPerDayUsd, market.totalBaseSupplyUsd)
+            : ZERO_BD;
+
+        const borrowRewardTokenPerDayUsd = computeTokenValueUsd(
+            borrowRewardTokensPerDay,
+            u8(rewardToken.decimals),
+            rewardTokenPriceUsd
+        );
+        const rewardBorrowYieldPerDay = market.totalBaseBorrow.gt(market.baseMinForRewards)
+            ? bigDecimalSafeDiv(borrowRewardTokenPerDayUsd, market.totalBaseBorrowUsd)
+            : ZERO_BD;
+
+        market.rewardSupplyApr = rewardSupplyYieldPerDay.times(DAYS_PER_YEAR.toBigDecimal());
+        market.rewardBorrowApr = rewardBorrowYieldPerDay.times(DAYS_PER_YEAR.toBigDecimal());
     }
 
     market.netSupplyApr = market.supplyApr.plus(market.rewardBorrowApr);
