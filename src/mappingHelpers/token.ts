@@ -4,9 +4,11 @@ import { Erc20 as Erc20Contract } from "../../generated/templates/Comet/Erc20";
 import { Comet as CometContract } from "../../generated/templates/Comet/Comet";
 import { formatUnits } from "../common/utils";
 import {
+    CHAINLINK_ETH_USDC_PRICE_FEED,
     CHAINLINK_ORACLE_ADDRESS,
     CHAINLINK_USD_ADDRESS,
     PRICE_FEED_FACTOR,
+    WETH_MARKET_ADDRESS,
     ZERO_BD,
     ZERO_BI,
 } from "../common/constants";
@@ -135,13 +137,25 @@ function getTokenPriceWithGenericOracleUsd(token: Token, event: ethereum.Event):
 }
 
 function getBaseTokenPriceUsd(token: BaseToken, event: ethereum.Event): BigDecimal {
+    const isWethMarket = Address.fromBytes(token.market).equals(WETH_MARKET_ADDRESS);
+
     if (token.lastPriceBlockNumber != event.block.number) {
         const comet = CometContract.bind(Address.fromBytes(token.market));
 
         const tryPrice = comet.try_getPrice(Address.fromBytes(token.priceFeed));
 
         if (!tryPrice.reverted) {
-            const price = tryPrice.value.toBigDecimal().div(PRICE_FEED_FACTOR);
+            let price = tryPrice.value.toBigDecimal().div(PRICE_FEED_FACTOR);
+
+            if (isWethMarket) {
+                // In WETH markets, price is returned in ETH, so need to convert to USD after
+                const ethPrice = comet
+                    .getPrice(CHAINLINK_ETH_USDC_PRICE_FEED)
+                    .toBigDecimal()
+                    .div(PRICE_FEED_FACTOR);
+
+                price = price.times(ethPrice);
+            }
 
             token.lastPriceBlockNumber = event.block.number;
             token.lastPriceUsd = price;
@@ -153,15 +167,26 @@ function getBaseTokenPriceUsd(token: BaseToken, event: ethereum.Event): BigDecim
 }
 
 function getCollateralTokenPriceUsd(token: CollateralToken, event: ethereum.Event): BigDecimal {
+    const isWethMarket = Address.fromBytes(token.market).equals(WETH_MARKET_ADDRESS);
     let price = token.lastPriceUsd;
 
     if (token.lastPriceBlockNumber != event.block.number) {
-        const comet = CometContract.bind(token.market);
+        const comet = CometContract.bind(Address.fromBytes(token.market));
 
-        const tryPrice = comet.try_getPrice(token.priceFeed);
+        const tryPrice = comet.try_getPrice(Address.fromBytes(token.priceFeed));
 
         if (!tryPrice.reverted) {
-            const price = tryPrice.value.toBigDecimal().div(PRICE_FEED_FACTOR);
+            let price = tryPrice.value.toBigDecimal().div(PRICE_FEED_FACTOR);
+
+            if (isWethMarket) {
+                // In WETH markets, price is returned in ETH, so need to convert to USD after
+                const ethPrice = comet
+                    .getPrice(CHAINLINK_ETH_USDC_PRICE_FEED)
+                    .toBigDecimal()
+                    .div(PRICE_FEED_FACTOR);
+
+                price = price.times(ethPrice);
+            }
 
             token.lastPriceBlockNumber = event.block.number;
             token.lastPriceUsd = price;

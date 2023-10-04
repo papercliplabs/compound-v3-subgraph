@@ -1,8 +1,7 @@
 import { Address, BigDecimal, BigInt } from "@graphprotocol/graph-ts";
-import { BASE_INDEX_SCALE, COMET_REWARDS_ADDRESS, SECONDS_PER_YEAR, ZERO_BD, ZERO_BI } from "./constants";
+import { BASE_INDEX_SCALE, COMET_REWARDS_ADDRESS, REWARD_FACTOR_SCALE, ZERO_BD, ZERO_BI } from "./constants";
 import { CometRewardsV1 as CometRewardsV1Contract } from "../../generated/templates/Comet/CometRewardsV1";
 import { CometRewardsV2 as CometRewardsV2Contract } from "../../generated/templates/Comet/CometRewardsV2";
-import { Token } from "../../generated/schema";
 
 /**
  * Divides a value by a given exponent of base 10 (10^exponent), and formats it as a BigDecimal
@@ -39,70 +38,12 @@ export function computeTokenValueUsd(input: BigInt, decimals: u8, priceUsd: BigD
     return formatUnits(input, decimals).times(priceUsd);
 }
 
-/**
- * Compute the annual percent rate (APR), this doesn't take into account compounding like APY does
- * @param utilization utilization point of the market (total borrow / total supply)
- * @param kink interest rate curve utilization kink point, this is where the high slope will begin to be used
- * @param perSecondInterestRateBase base interest rate
- * @param perSecondInterestRateSlopeLow interest rate slope before kink
- * @param perSecondInterestRateSlopeHigh interest rate slope after kink
- */
-export function computeApr(
-    utilization: BigDecimal,
-    kink: BigDecimal,
-    perSecondInterestRateBase: BigInt,
-    perSecondInterestRateSlopeLow: BigInt,
-    perSecondInterestRateSlopeHigh: BigInt
-): BigDecimal {
-    const utilizationScaled = parseUnits(utilization, 18);
-    const kinkScaled = parseUnits(kink, 18);
-
-    const perSecondBeforeKinkContribution = perSecondInterestRateSlopeLow.times(
-        bigIntMin(utilizationScaled, kinkScaled)
-    );
-    const perSecondAfterKinkContribution = perSecondInterestRateSlopeHigh.times(
-        bigIntSafeMinus(utilizationScaled, kinkScaled)
-    );
-
-    const perSecondRate = perSecondInterestRateBase
-        .plus(perSecondBeforeKinkContribution)
-        .plus(perSecondAfterKinkContribution);
-    const apr = formatUnits(perSecondRate.times(SECONDS_PER_YEAR), 18);
-
-    return apr;
-}
-
 export function presentValue(principal: BigInt, index: BigInt): BigInt {
     return principal.times(index).div(BASE_INDEX_SCALE);
 }
 
 export function principalValue(presentValue: BigInt, index: BigInt): BigInt {
     return bigIntSafeDiv(presentValue.times(BASE_INDEX_SCALE), index);
-}
-
-export class bigIntSignedPlusRet {
-    sum: BigInt;
-    sumIsNeg: boolean;
-}
-
-export function bigIntSignedPlus(a: BigInt, aIsNeg: boolean, b: BigInt, bIsNeg: boolean): bigIntSignedPlusRet {
-    let sum = ZERO_BI;
-    let sumIsNeg = false;
-
-    if (aIsNeg == bIsNeg) {
-        sum = a.plus(b);
-        sumIsNeg = aIsNeg;
-    } else if (aIsNeg) {
-        // A neg, B pos
-        sumIsNeg = a.gt(b);
-        sum = sumIsNeg ? a.minus(b) : b.minus(a);
-    } else {
-        // A pos, B neg
-        sumIsNeg = b.gt(a);
-        sum = sumIsNeg ? b.minus(a) : a.minus(b);
-    }
-
-    return { sum, sumIsNeg };
 }
 
 export function bigDecimalSafeDiv(num: BigDecimal, den: BigDecimal): BigDecimal {
@@ -167,7 +108,7 @@ export function getRewardConfigData(marketAddress: Address): RewardConfigData {
             tokenAddress: rewardConfig.getToken(),
             rescaleFactor: rewardConfig.getRescaleFactor(),
             shouldUpscale: rewardConfig.getShouldUpscale(),
-            multiplier: ZERO_BI,
+            multiplier: REWARD_FACTOR_SCALE,
         };
     } else {
         // V2

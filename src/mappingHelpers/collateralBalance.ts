@@ -1,7 +1,16 @@
-import { Address, Bytes, ethereum } from "@graphprotocol/graph-ts";
-import { CollateralToken, MarketCollateralBalance, Position, PositionCollateralBalance } from "../../generated/schema";
-import { ZERO_BI } from "../common/constants";
+import { Address, BigDecimal, Bytes, ethereum } from "@graphprotocol/graph-ts";
+import {
+    CollateralToken,
+    Market,
+    MarketCollateralBalance,
+    Position,
+    PositionCollateralBalance,
+    Token,
+} from "../../generated/schema";
+import { ZERO_BD, ZERO_BI } from "../common/constants";
 import { Comet as CometContract } from "../../generated/templates/Comet/Comet";
+import { getOrCreateToken, getTokenPriceUsd } from "./token";
+import { computeTokenValueUsd } from "../common/utils";
 
 ////
 // Market Collateral Balance
@@ -22,6 +31,7 @@ export function getOrCreateMarketCollateralBalance(
         collateralBalance.market = collateralToken.market;
 
         updateMarketCollateralBalance(collateralBalance, event);
+        updateMarketCollateralBalanceUsd(collateralBalance, event);
 
         collateralBalance.save();
     }
@@ -40,6 +50,46 @@ export function updateMarketCollateralBalance(collateralBalance: MarketCollatera
 
     // TODO: this is reverting!
     // collateralBalance.reserves = comet.getCollateralReserves(Address.fromBytes(CollateralToken.address));
+}
+
+// Update just the USD value of balance based on newest price and existing balance
+export function updateMarketCollateralBalanceUsd(
+    collateralBalance: MarketCollateralBalance,
+    event: ethereum.Event
+): void {
+    const collateralToken = CollateralToken.load(collateralBalance.collateralToken)!;
+    const collateralTokenToken = getOrCreateToken(Address.fromBytes(collateralToken.token), event);
+    const price = getTokenPriceUsd(collateralToken, event);
+
+    collateralBalance.balanceUsd = computeTokenValueUsd(
+        collateralBalance.balance,
+        u8(collateralTokenToken.decimals),
+        price
+    );
+    collateralBalance.reservesUsd = computeTokenValueUsd(
+        collateralBalance.reserves,
+        u8(collateralTokenToken.decimals),
+        price
+    );
+}
+
+/**
+ * Update all USD values of the collateral balances of a market
+ * @param market
+ * @param event
+ * @return total collateral balances in USD
+ */
+export function updateAllMarketCollateralUsdBalances(market: Market, event: ethereum.Event): void {
+    const tokenIds = market.collateralTokens;
+
+    let totalCollateralBalanceUsd = ZERO_BD;
+    for (let i = 0; i < tokenIds.length; i++) {
+        const token = CollateralToken.load(tokenIds[i])!; // Guaranteed to exist
+        const tokenBalance = getOrCreateMarketCollateralBalance(token, event);
+        const price = getTokenPriceUsd(token, event);
+
+        // const tokenBalanceUsd =
+    }
 }
 
 ////

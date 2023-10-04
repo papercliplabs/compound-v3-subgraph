@@ -1,20 +1,19 @@
-import { Address, Bytes, ethereum } from "@graphprotocol/graph-ts";
-import { BaseToken, Market, Token } from "../../generated/schema";
+import { Address, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
+import { BaseToken, CollateralToken, Market, Token } from "../../generated/schema";
 import { Comet as CometContract } from "../../generated/templates/Comet/Comet";
 import { Configurator as ConfiguratorContract } from "../../generated/templates/Comet/Configurator";
 import {
-    BLOCKS_PER_DAY,
+    BASE_INDEX_SCALE,
+    COMET_FACTOR_SCALE,
     CONFIGURATOR_PROXY_ADDRESS,
     DAYS_PER_YEAR,
-    ONE_BD,
-    ONE_BI,
     REWARD_FACTOR_SCALE,
+    SECONDS_PER_DAY,
+    SECONDS_PER_YEAR,
     ZERO_BD,
-    ZERO_BI,
 } from "../common/constants";
 import {
     bigDecimalSafeDiv,
-    computeApr,
     computeTokenValueUsd,
     formatUnits,
     getRewardConfigData,
@@ -29,6 +28,7 @@ import {
     updateCollateralTokenConfig,
 } from "./token";
 import { getOrCreateUsage } from "./usage";
+import { getOrCreateMarketCollateralBalance, updateMarketCollateralBalanceUsd } from "./collateralBalance";
 
 export function getOrCreateMarket(marketId: Address, event: ethereum.Event): Market {
     let market = Market.load(marketId);
@@ -59,6 +59,8 @@ export function updateMarketConfiguration(market: Market, event: ethereum.Event)
 
     market.lastConfigurationUpdateBlockNumber = event.block.number;
     market.factory = configurator.factory(Address.fromBytes(market.id));
+    market.name = comet.name();
+    market.symbol = comet.symbol();
     market.governor = comet.governor();
     market.pauseGuardian = comet.pauseGuardian();
     market.extensionDelegate = comet.extensionDelegate();
@@ -93,13 +95,16 @@ export function updateMarketConfiguration(market: Market, event: ethereum.Event)
 
     // Collateral tokens
     const numCollateralTokens = comet.numAssets();
+    const collateralTokens: Bytes[] = [];
     for (let i = 0; i < numCollateralTokens; i++) {
         const assetInfo = comet.getAssetInfo(i);
         const token = getOrCreateToken(assetInfo.asset, event);
         const collateralToken = getOrCreateCollateralToken(market, token, event);
         updateCollateralTokenConfig(collateralToken, event);
         collateralToken.save();
+        collateralTokens.push(collateralToken.id);
     }
+    market.collateralTokens = collateralTokens;
 }
 
 export function updateMarketAccounting(market: Market, event: ethereum.Event): void {
@@ -126,26 +131,20 @@ export function updateMarketAccounting(market: Market, event: ethereum.Event): v
     market.totalBaseSupply = presentValue(market.totalBasePrincipalSupply, market.baseSupplyIndex);
     market.totalBaseBorrow = presentValue(market.totalBasePrincipalBorrow, market.baseBorrowIndex);
 
-    market.utilization = bigDecimalSafeDiv(
-        market.totalBaseBorrow.toBigDecimal(),
-        market.totalBaseSupply.toBigDecimal()
-    );
+    const scaledUtilization = comet.getUtilization();
+    market.utilization = scaledUtilization.toBigDecimal().div(COMET_FACTOR_SCALE.toBigDecimal());
 
-    market.supplyApr = computeApr(
-        market.utilization,
-        market.supplyKink,
-        market.supplyPerSecondInterestRateBase,
-        market.supplyPerSecondInterestRateSlopeLow,
-        market.supplyPerSecondInterestRateSlopeHigh
-    );
+    const supplyRatePerSec = comet.getSupplyRate(scaledUtilization);
+    const borrowRatePerSec = comet.getBorrowRate(scaledUtilization);
 
-    market.borrowApr = computeApr(
-        market.utilization,
-        market.borrowKink,
-        market.borrowPerSecondInterestRateBase,
-        market.borrowPerSecondInterestRateSlopeLow,
-        market.borrowPerSecondInterestRateSlopeHigh
-    );
+    market.supplyApr = supplyRatePerSec
+        .times(SECONDS_PER_YEAR)
+        .toBigDecimal()
+        .div(COMET_FACTOR_SCALE.toBigDecimal());
+    market.borrowApr = borrowRatePerSec
+        .times(SECONDS_PER_YEAR)
+        .toBigDecimal()
+        .div(COMET_FACTOR_SCALE.toBigDecimal());
 
     const baseToken = BaseToken.load(market.baseToken)!; // Guaranteed to exist
     const baseTokenToken = Token.load(baseToken.token)!; // Guaranteed to exist
@@ -166,35 +165,20 @@ export function updateMarketAccounting(market: Market, event: ethereum.Event): v
         market.rewardBorrowApr = ZERO_BD;
     } else {
         const rewardToken = getOrCreateToken(rewardConfigData.tokenAddress, event);
-
-        const rewardRescaleFactor = rewardConfigData.rescaleFactor;
-        const shouldUpscale = rewardConfigData.shouldUpscale;
         const rewardMultiplier = rewardConfigData.multiplier;
 
-        const baseTrackingSupplyPerDay = market.baseTrackingSupplySpeed.times(BLOCKS_PER_DAY);
-        const baseTrackingBorrowPerDay = market.baseTrackingBorrowSpeed.times(BLOCKS_PER_DAY);
-
-        let supplyRewardTokensPerDay = ZERO_BI;
-        let borrowRewardTokensPerDay = ZERO_BI;
-        if (shouldUpscale) {
-            supplyRewardTokensPerDay = baseTrackingSupplyPerDay
-                .times(rewardRescaleFactor)
-                .times(rewardMultiplier)
-                .div(REWARD_FACTOR_SCALE);
-            borrowRewardTokensPerDay = baseTrackingBorrowPerDay
-                .times(rewardRescaleFactor)
-                .times(rewardMultiplier)
-                .div(REWARD_FACTOR_SCALE);
-        } else {
-            supplyRewardTokensPerDay = baseTrackingSupplyPerDay
-                .div(rewardRescaleFactor)
-                .times(rewardMultiplier)
-                .div(REWARD_FACTOR_SCALE);
-            borrowRewardTokensPerDay = baseTrackingBorrowPerDay
-                .div(rewardRescaleFactor)
-                .times(rewardMultiplier)
-                .div(REWARD_FACTOR_SCALE);
-        }
+        const supplyRewardTokensPerDay = market.baseTrackingSupplySpeed
+            .times(BigInt.fromU32(10).pow(u8(rewardToken.decimals)))
+            .times(SECONDS_PER_DAY)
+            .times(rewardMultiplier)
+            .div(REWARD_FACTOR_SCALE)
+            .div(BASE_INDEX_SCALE);
+        const borrowRewardTokensPerDay = market.baseTrackingBorrowSpeed
+            .times(BigInt.fromU32(10).pow(u8(rewardToken.decimals)))
+            .times(SECONDS_PER_DAY)
+            .times(rewardMultiplier)
+            .div(REWARD_FACTOR_SCALE)
+            .div(BASE_INDEX_SCALE);
 
         const rewardTokenPriceUsd = getTokenPriceUsd(rewardToken, event);
 
@@ -220,6 +204,30 @@ export function updateMarketAccounting(market: Market, event: ethereum.Event): v
         market.rewardBorrowApr = rewardBorrowYieldPerDay.times(DAYS_PER_YEAR.toBigDecimal());
     }
 
-    market.netSupplyApr = market.supplyApr.plus(market.rewardBorrowApr);
+    // Collateral USD balances
+    const collateralTokenIds = market.collateralTokens;
+
+    let totalCollateralBalanceUsd = ZERO_BD;
+    let totalCollateralReservesUsd = ZERO_BD;
+    for (let i = 0; i < collateralTokenIds.length; i++) {
+        const token = CollateralToken.load(collateralTokenIds[i])!; // Guaranteed to exist
+        const tokenBalance = getOrCreateMarketCollateralBalance(token, event);
+        updateMarketCollateralBalanceUsd(tokenBalance, event);
+        tokenBalance.save();
+
+        totalCollateralBalanceUsd = totalCollateralBalanceUsd.plus(tokenBalance.balanceUsd);
+        totalCollateralReservesUsd = totalCollateralReservesUsd.plus(tokenBalance.reservesUsd);
+    }
+    market.collateralBalanceUsd = totalCollateralBalanceUsd;
+    market.collateralReservesBalanceUsd = totalCollateralReservesUsd;
+
+    market.totalReserveBalanceUsd = market.baseReserveBalanceUsd.plus(market.collateralReservesBalanceUsd);
+
+    market.netSupplyApr = market.supplyApr.plus(market.rewardSupplyApr);
     market.netBorrowApr = market.borrowApr.minus(market.rewardBorrowApr);
+
+    market.collateralization = bigDecimalSafeDiv(
+        market.totalBaseSupply.toBigDecimal(),
+        market.totalBaseBorrow.toBigDecimal()
+    );
 }
