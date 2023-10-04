@@ -12,6 +12,7 @@ export const WETH_MARKET_ADDRESS = Address.fromString("0xA17581A9E3356d9A858b789
 export const DAYS_PER_YEAR: BigInt = BigInt.fromString("365");
 export const SECONDS_PER_HOUR: BigInt = BigInt.fromString("3600");
 export const SECONDS_PER_DAY: BigInt = BigInt.fromString("86400");
+export const SECONDS_PER_WEEK: BigInt = BigInt.fromString("604800");
 export const SECONDS_PER_YEAR: BigInt = BigInt.fromString("31536000");
 
 export const SECONDS_PER_BLOCK: BigInt = BigInt.fromString("12");

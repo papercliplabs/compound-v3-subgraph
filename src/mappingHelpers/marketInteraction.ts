@@ -14,6 +14,7 @@ import {
     WithdrawReservesMarketInteraction,
 } from "../../generated/schema";
 import { ZERO_BD } from "../common/constants";
+import { getOrCreateMarketConfiguration } from "./market";
 
 export function createSupplyBaseMarketInteraction(
     market: Market,
@@ -24,6 +25,7 @@ export function createSupplyBaseMarketInteraction(
 ): void {
     const id = event.transaction.hash.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
     const interaction = new SupplyBaseMarketInteraction(id);
+    const marketConfiguration = getOrCreateMarketConfiguration(market, event);
 
     interaction.hash = event.transaction.hash;
     interaction.logIndex = event.logIndex;
@@ -40,7 +42,7 @@ export function createSupplyBaseMarketInteraction(
     interaction.market = market.id;
     interaction.position = position.id;
 
-    interaction.asset = market.baseToken;
+    interaction.asset = marketConfiguration.baseToken;
     interaction.amount = amount;
     interaction.amountUsd = ZERO_BD; // TODO
 
@@ -56,6 +58,7 @@ export function createWithdrawBaseMarketInteraction(
 ): void {
     const id = event.transaction.hash.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
     const interaction = new WithdrawBaseMarketInteraction(id);
+    const marketConfiguration = getOrCreateMarketConfiguration(market, event);
 
     interaction.hash = event.transaction.hash;
     interaction.logIndex = event.logIndex;
@@ -72,7 +75,7 @@ export function createWithdrawBaseMarketInteraction(
     interaction.market = market.id;
     interaction.position = position.id;
 
-    interaction.asset = market.baseToken;
+    interaction.asset = marketConfiguration.baseToken;
     interaction.amount = amount;
     interaction.amountUsd = ZERO_BD; // TODO
 
@@ -88,6 +91,7 @@ export function createAbsorbDebtMarketInteraction(
 ): void {
     const id = event.transaction.hash.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
     const interaction = new AbsorbDebtMarketInteraction(id);
+    const marketConfiguration = getOrCreateMarketConfiguration(market, event);
 
     interaction.hash = event.transaction.hash;
     interaction.logIndex = event.logIndex;
@@ -106,7 +110,7 @@ export function createAbsorbDebtMarketInteraction(
     interaction.market = market.id;
     interaction.position = position.id;
 
-    interaction.asset = market.baseToken;
+    interaction.asset = marketConfiguration.baseToken;
     interaction.amount = amount;
     interaction.amountUsd = ZERO_BD; // TODO
 

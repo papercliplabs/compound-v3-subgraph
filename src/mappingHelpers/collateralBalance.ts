@@ -1,11 +1,10 @@
-import { Address, BigDecimal, Bytes, ethereum } from "@graphprotocol/graph-ts";
+import { Address, Bytes, ethereum } from "@graphprotocol/graph-ts";
 import {
     CollateralToken,
     Market,
     MarketCollateralBalance,
     Position,
     PositionCollateralBalance,
-    Token,
 } from "../../generated/schema";
 import { ZERO_BD, ZERO_BI } from "../common/constants";
 import { Comet as CometContract } from "../../generated/templates/Comet/Comet";
@@ -111,7 +110,7 @@ export function getOrCreatePositionCollateralBalance(
         collateralBalance.collateralToken = collateralToken.id;
         collateralBalance.position = position.id;
 
-        updatePositionCollateralBalance(collateralBalance, event);
+        updatePositionCollateralBalance(position, collateralBalance, event);
 
         collateralBalance.save();
     }
@@ -120,10 +119,10 @@ export function getOrCreatePositionCollateralBalance(
 }
 
 export function updatePositionCollateralBalance(
+    position: Position,
     collateralBalance: PositionCollateralBalance,
     event: ethereum.Event
 ): void {
-    const position = Position.load(collateralBalance.position)!; // Guaranteed to exist
     const collateralToken = CollateralToken.load(collateralBalance.collateralToken)!; // Guaranteed to exist
     const comet = CometContract.bind(Address.fromBytes(position.market));
 

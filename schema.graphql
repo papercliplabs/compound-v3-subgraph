@@ -129,56 +129,11 @@ type PositionCollateralBalance implements CollateralBalance @entity {
 # Market
 ####
 
-# type MarketConfiguration @entity {
-#     cometImplementation: Bytes
-
-#     lastConfigurationUpdateBlockNumber: BigInt!
-#     name: String!
-#     symbol: String!
-#     factory: Bytes!
-#     governor: Bytes!
-#     pauseGuardian: Bytes!
-#     extensionDelegate: Bytes!
-
-#     supplyKink: BigDecimal!
-#     supplyPerSecondInterestRateSlopeLow: BigInt!
-#     supplyPerSecondInterestRateSlopeHigh: BigInt!
-#     supplyPerSecondInterestRateBase: BigInt!
-
-#     borrowKink: BigDecimal!
-#     borrowPerSecondInterestRateSlopeLow: BigInt!
-#     borrowPerSecondInterestRateSlopeHigh: BigInt!
-#     borrowPerSecondInterestRateBase: BigInt!
-
-#     storeFrontPriceFactor: BigInt!
-#     trackingIndexScale: BigInt!
-
-#     baseTrackingSupplySpeed: BigInt!
-# 	baseTrackingBorrowSpeed: BigInt!
-# 	baseMinForRewards: BigInt!
-# 	baseBorrowMin: BigInt!
-# 	targetReserves: BigInt!
-
-#     baseToken: BaseToken! 
-#     collateralTokens: [CollateralToken!]! 
-# }
-
-type Market @entity {
-    ####
-    # On creation only
-    ####
-    "Comet proxy address"
+type MarketConfiguration @entity {
+    "Name + time qualifier"
     id: Bytes!
-    "Comet proxy address"
-    cometProxy: Bytes!
-    "Protocol this market is part of"
-    protocol: Protocol!
-    "Block number the market was created"
-    creationBlockNumber: BigInt!
+    market: Market!
 
-    ####
-    # Configuration
-    ####
     cometImplementation: Bytes
 
     lastConfigurationUpdateBlockNumber: BigInt!
@@ -210,10 +165,22 @@ type Market @entity {
 
     baseToken: BaseToken! 
     collateralTokens: [CollateralToken!]! 
+}
 
-    ####
-    # Accounting
-    ####
+# Snapshot is taken whenever any configuration changes
+type MarketConfigurationSnapshot @entity {
+    "Timestamp of config change"
+    id: Bytes!
+    timestamp: BigInt!
+    market: Market!
+    configuration: MarketConfiguration!
+}
+
+type MarketAccounting @entity {
+    "Name + time qualifier qualifier"
+    id: Bytes!
+    market: Market!
+
     lastAccountingUpdatedBlockNumber: BigInt!
 
     baseSupplyIndex: BigInt!
@@ -252,6 +219,54 @@ type Market @entity {
     netBorrowApr: BigDecimal!
 
     collateralization: BigDecimal!
+}
+
+type HourlyMarketAccounting @entity {
+    "hour since unix epoche"
+    id: Bytes!
+    hour: BigInt!
+    market: Market!
+    accounting: MarketAccounting!
+}
+
+type DailyMarketAccounting @entity {
+    "Day since unix epoche"
+    id: Bytes!
+    day: BigInt!
+    market: Market!
+    accounting: MarketAccounting!
+}
+
+type WeeklyMarketAccounting @entity {
+    "Weeks since unix epoche"
+    id: Bytes!
+    week: BigInt!
+    market: Market!
+    accounting: MarketAccounting!
+}
+
+type Market @entity {
+    ####
+    # On creation only
+    ####
+    "Comet proxy address"
+    id: Bytes!
+    "Comet proxy address"
+    cometProxy: Bytes!
+    "Protocol this market is part of"
+    protocol: Protocol!
+    "Block number the market was created"
+    creationBlockNumber: BigInt!
+
+    ####
+    # Configuration
+    ####
+    configuration: MarketConfiguration!
+
+    ####
+    # Accounting
+    ####
+    accounting: MarketAccounting!
 
     ####
     # Usage
@@ -274,6 +289,12 @@ type Market @entity {
 
     hourlyUsage: [MarketHourlyUsage!]! @derivedFrom(field: "market")
     dailyUsage: [MarketDailyUsage!]! @derivedFrom(field: "market")
+
+    configurationSnapshots: [MarketConfigurationSnapshot!]! @derivedFrom(field: "market")
+
+    hourlyMarketAccounting: [HourlyMarketAccounting!]! @derivedFrom(field: "market")
+    dailyMarketAccounting: [DailyMarketAccounting!]! @derivedFrom(field: "market")
+    weeklyMarketAccounting: [WeeklyMarketAccounting!]! @derivedFrom(field: "market")
 }
 
 ####
@@ -297,6 +318,31 @@ type Account @entity {
 # Position
 ####
 
+type PositionAccounting @entity {
+    "Market + Account + Name + time qualifier"
+    id: Bytes!
+
+    position: Position!
+
+    lastUpdatedBlockNumber: BigInt!
+    basePrincipal: BigInt!
+    baseBalance: BigInt!
+    baseTrackingIndex: BigInt!
+    baseTrackingAccrued: BigInt!
+
+    baseBalanceUsd: BigDecimal!
+    collateralBalanceUsd: BigDecimal!
+}
+
+type PositionAccountingSnapshot @entity {
+    "Timestamp + log index"
+    id: Bytes!
+
+    position: Position!
+    timestamp: BigInt!
+    accounting: PositionAccounting!
+}
+
 type Position @entity {
     ####
     # On creation only
@@ -310,14 +356,7 @@ type Position @entity {
     "Owner of the position"
     account: Account!
 
-    ####
-    # On update
-    ####
-    lastUpdatedBlockNumber: BigInt!
-    basePrincipal: BigInt!
-    baseBalance: BigInt!
-    baseTrackingIndex: BigInt!
-    baseTrackingAccrued: BigInt!
+    accounting: PositionAccounting!
 
     ####
     # Derived
@@ -332,6 +371,8 @@ type Position @entity {
     transferFromCollateralMarketInteractions: [TransferCollateralMarketInteraction!]! @derivedFrom(field: "fromPosition")
     transferToCollateralMarketInteractions: [TransferCollateralMarketInteraction!]! @derivedFrom(field: "toPosition")
     absorbCollateralMarketInteractions: [AbsorbCollateralMarketInteraction!]! @derivedFrom(field: "position") 
+
+    positionAccountingSnapshots: [PositionAccountingSnapshot!] @derivedFrom(field: "position")
 }
 
 ####
