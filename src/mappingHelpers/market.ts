@@ -322,7 +322,7 @@ function createMarketAccountingSnapshots(accounting: MarketAccounting, event: et
     let dailyAccounting = DailyMarketAccounting.load(dailyId);
     let weeklyAccounting = WeeklyMarketAccounting.load(weeklyId);
 
-    if (!hourlyAccounting) {
+    if (!hourlyAccounting || !dailyAccounting || !weeklyAccounting) {
         const accountingId = accounting.market.concat(hourlyId);
 
         // Copy existing config
@@ -336,15 +336,17 @@ function createMarketAccountingSnapshots(accounting: MarketAccounting, event: et
         }
         copiedAccounting.save();
 
-        hourlyAccounting = new HourlyMarketAccounting(hourlyId);
-        hourlyAccounting.hour = hour;
-        hourlyAccounting.timestamp = event.block.timestamp;
-        hourlyAccounting.market = accounting.market;
-        hourlyAccounting.accounting = copiedAccounting.id;
-        hourlyAccounting.save();
+        if (!hourlyAccounting) {
+            hourlyAccounting = new HourlyMarketAccounting(hourlyId);
+            hourlyAccounting.hour = hour;
+            hourlyAccounting.timestamp = event.block.timestamp;
+            hourlyAccounting.market = accounting.market;
+            hourlyAccounting.accounting = copiedAccounting.id;
+            hourlyAccounting.save();
+        }
 
         if (!dailyAccounting) {
-            dailyAccounting = new DailyMarketAccounting(hourlyId);
+            dailyAccounting = new DailyMarketAccounting(dailyId);
             dailyAccounting.day = day;
             dailyAccounting.timestamp = event.block.timestamp;
             dailyAccounting.market = accounting.market;
@@ -352,7 +354,7 @@ function createMarketAccountingSnapshots(accounting: MarketAccounting, event: et
             dailyAccounting.save();
         }
         if (!weeklyAccounting) {
-            weeklyAccounting = new WeeklyMarketAccounting(hourlyId);
+            weeklyAccounting = new WeeklyMarketAccounting(weeklyId);
             weeklyAccounting.week = week;
             weeklyAccounting.timestamp = event.block.timestamp;
             weeklyAccounting.market = accounting.market;

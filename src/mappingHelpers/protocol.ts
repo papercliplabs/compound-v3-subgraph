@@ -112,7 +112,7 @@ function createProtocolAccountingSnapshots(accounting: ProtocolAccounting, event
     let dailyAccounting = DailyProtocolAccounting.load(dailyId);
     let weeklyAccounting = WeeklyProtocolAccounting.load(weeklyId);
 
-    if (!hourlyAccounting) {
+    if (!hourlyAccounting || !dailyAccounting || !weeklyAccounting) {
         const accountingId = accounting.protocol.concat(hourlyId);
 
         // Copy existing config
@@ -126,15 +126,16 @@ function createProtocolAccountingSnapshots(accounting: ProtocolAccounting, event
         }
         copiedAccounting.save();
 
-        hourlyAccounting = new HourlyProtocolAccounting(hourlyId);
-        hourlyAccounting.hour = hour;
-        hourlyAccounting.timestamp = event.block.timestamp;
-        hourlyAccounting.protocol = CONFIGURATOR_PROXY_ADDRESS;
-        hourlyAccounting.accounting = copiedAccounting.id;
-        hourlyAccounting.save();
-
+        if (!hourlyAccounting) {
+            hourlyAccounting = new HourlyProtocolAccounting(hourlyId);
+            hourlyAccounting.hour = hour;
+            hourlyAccounting.timestamp = event.block.timestamp;
+            hourlyAccounting.protocol = CONFIGURATOR_PROXY_ADDRESS;
+            hourlyAccounting.accounting = copiedAccounting.id;
+            hourlyAccounting.save();
+        }
         if (!dailyAccounting) {
-            dailyAccounting = new DailyProtocolAccounting(hourlyId);
+            dailyAccounting = new DailyProtocolAccounting(dailyId);
             dailyAccounting.day = day;
             dailyAccounting.timestamp = event.block.timestamp;
             dailyAccounting.protocol = CONFIGURATOR_PROXY_ADDRESS;
@@ -142,7 +143,7 @@ function createProtocolAccountingSnapshots(accounting: ProtocolAccounting, event
             dailyAccounting.save();
         }
         if (!weeklyAccounting) {
-            weeklyAccounting = new WeeklyProtocolAccounting(hourlyId);
+            weeklyAccounting = new WeeklyProtocolAccounting(weeklyId);
             weeklyAccounting.week = week;
             weeklyAccounting.timestamp = event.block.timestamp;
             weeklyAccounting.protocol = CONFIGURATOR_PROXY_ADDRESS;
