@@ -72,25 +72,6 @@ export function updateMarketCollateralBalanceUsd(
     );
 }
 
-/**
- * Update all USD values of the collateral balances of a market
- * @param market
- * @param event
- * @return total collateral balances in USD
- */
-export function updateAllMarketCollateralUsdBalances(market: Market, event: ethereum.Event): void {
-    const tokenIds = market.collateralTokens;
-
-    let totalCollateralBalanceUsd = ZERO_BD;
-    for (let i = 0; i < tokenIds.length; i++) {
-        const token = CollateralToken.load(tokenIds[i])!; // Guaranteed to exist
-        const tokenBalance = getOrCreateMarketCollateralBalance(token, event);
-        const price = getTokenPriceUsd(token, event);
-
-        // const tokenBalanceUsd =
-    }
-}
-
 ////
 // Position Collateral Balance
 ////

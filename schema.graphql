@@ -1,6 +1,6 @@
 ####
 # Protocol
-#### 
+####
 
 type Protocol @entity {
     "Configurator proxy address"
@@ -9,13 +9,68 @@ type Protocol @entity {
     configuratorProxy: Bytes!
     configuratorImplementation: Bytes
 
-    cumulativeUsage: Usage! 
+    markets: [Market!]!
+
+    accounting: ProtocolAccounting!
+
+    cumulativeUsage: Usage!
 
     # Derived
-    markets: [Market!] @derivedFrom(field: "protocol")
-
     hourlyUsage: [ProtocolHourlyUsage!]! @derivedFrom(field: "protocol")
     dailyUsage: [ProtocolDailyUsage!]! @derivedFrom(field: "protocol")
+
+    hourlyProtocolAccounting: [HourlyProtocolAccounting!]! @derivedFrom(field: "protocol")
+    dailyProtocolAccounting: [DailyProtocolAccounting!]! @derivedFrom(field: "protocol")
+    weeklyProtocolAccounting: [WeeklyProtocolAccounting!]! @derivedFrom(field: "protocol")
+}
+
+type ProtocolAccounting @entity {
+    "Name + time qualifier + log index (optional)"
+    id: Bytes!
+
+    lastUpdatedBlock: BigInt!
+
+    totalSupplyUsd: BigDecimal!
+    totalBorrowUsd: BigDecimal!
+    reserveBalanceUsd: BigDecimal!
+    collateralBalanceUsd: BigDecimal!
+    collateralReservesBalanceUsd: BigDecimal!
+    totalReserveBalanceUsd: BigDecimal!
+
+    "Percent usage of the protocol, that is totalBorrowUsd / totalSupplyUsd"
+    utilization: BigDecimal!
+
+    # APR's
+    avgSupplyApr: BigDecimal!
+    avgBorrowApr: BigDecimal!
+    avgRewardSupplyApr: BigDecimal!
+    avgRewardBorrowApr: BigDecimal!
+
+    avgNetSupplyApr: BigDecimal!
+    avgNetBorrowApr: BigDecimal!
+
+    collateralization: BigDecimal!
+}
+
+type HourlyProtocolAccounting @entity {
+    id: Bytes!
+    hour: BigInt!
+    protocol: Protocol!
+    accounting: ProtocolAccounting!
+}
+
+type DailyProtocolAccounting @entity {
+    id: Bytes!
+    day: BigInt!
+    protocol: Protocol!
+    accounting: ProtocolAccounting!
+}
+
+type WeeklyProtocolAccounting @entity {
+    id: Bytes!
+    week: BigInt!
+    protocol: Protocol!
+    accounting: ProtocolAccounting!
 }
 
 ####
@@ -36,7 +91,7 @@ type Token @entity {
     lastPriceBlockNumber: BigInt!
 }
 
-type BaseToken @entity { 
+type BaseToken @entity {
     "market ID + token ID"
     id: Bytes!
 
@@ -53,7 +108,7 @@ type BaseToken @entity {
     lastPriceBlockNumber: BigInt!
 }
 
-type CollateralToken @entity { 
+type CollateralToken @entity {
     "Market ID + token ID + 'Col'"
     id: Bytes!
 
@@ -158,13 +213,13 @@ type MarketConfiguration @entity {
     trackingIndexScale: BigInt!
 
     baseTrackingSupplySpeed: BigInt!
-	baseTrackingBorrowSpeed: BigInt!
-	baseMinForRewards: BigInt!
-	baseBorrowMin: BigInt!
-	targetReserves: BigInt!
+    baseTrackingBorrowSpeed: BigInt!
+    baseMinForRewards: BigInt!
+    baseBorrowMin: BigInt!
+    targetReserves: BigInt!
 
-    baseToken: BaseToken! 
-    collateralTokens: [CollateralToken!]! 
+    baseToken: BaseToken!
+    collateralTokens: [CollateralToken!]!
 }
 
 # Snapshot is taken whenever any configuration changes
@@ -188,7 +243,7 @@ type MarketAccounting @entity {
     trackingSupplyIndex: BigInt!
     trackingBorrowIndex: BigInt!
     lastAccrualTime: BigInt!
-    
+
     totalBasePrincipalSupply: BigInt!
     totalBasePrincipalBorrow: BigInt!
 
@@ -271,7 +326,7 @@ type Market @entity {
     ####
     # Usage
     ####
-    cumulativeUsage: Usage! 
+    cumulativeUsage: Usage!
 
     ####
     # Derived
@@ -279,13 +334,13 @@ type Market @entity {
     collateralBalances: [MarketCollateralBalance!]! @derivedFrom(field: "market")
     positions: [Position!]! @derivedFrom(field: "market")
 
-    supplyBaseMarketInteractions: [SupplyBaseMarketInteraction!]! @derivedFrom(field: "market")
-    withdrawBaseMarketInteractions: [WithdrawBaseMarketInteraction!]! @derivedFrom(field: "market")
-    absorbDebtMarketInteractions: [AbsorbDebtMarketInteraction!]! @derivedFrom(field: "market")
-    supplyCollateralMarketInteractions: [SupplyCollateralMarketInteraction!]! @derivedFrom(field: "market")
-    withdrawCollateralMarketInteractions: [WithdrawCollateralMarketInteraction!]! @derivedFrom(field: "market")
-    transferCollateralMarketInteractions: [TransferCollateralMarketInteraction!]! @derivedFrom(field: "market")
-    absorbCollateralMarketInteractions: [AbsorbCollateralMarketInteraction!]! @derivedFrom(field: "market") 
+    supplyBaseInteractions: [SupplyBaseInteraction!]! @derivedFrom(field: "market")
+    withdrawBaseInteractions: [WithdrawBaseInteraction!]! @derivedFrom(field: "market")
+    absorbDebtInteractions: [AbsorbDebtInteraction!]! @derivedFrom(field: "market")
+    supplyCollateralInteractions: [SupplyCollateralInteraction!]! @derivedFrom(field: "market")
+    withdrawCollateralInteractions: [WithdrawCollateralInteraction!]! @derivedFrom(field: "market")
+    transferCollateralInteractions: [TransferCollateralInteraction!]! @derivedFrom(field: "market")
+    absorbCollateralInteractions: [AbsorbCollateralInteraction!]! @derivedFrom(field: "market")
 
     hourlyUsage: [MarketHourlyUsage!]! @derivedFrom(field: "market")
     dailyUsage: [MarketDailyUsage!]! @derivedFrom(field: "market")
@@ -312,6 +367,7 @@ type Account @entity {
     # Derived
     ####
     positions: [Position!]! @derivedFrom(field: "account")
+    rewardsClaimed: [ClaimRewardsInteraction!]! @derivedFrom(field: "account")
 }
 
 ####
@@ -363,14 +419,14 @@ type Position @entity {
     ####
     collateralBalances: [PositionCollateralBalance!]! @derivedFrom(field: "position")
 
-    supplyBaseMarketInteractions: [SupplyBaseMarketInteraction!]! @derivedFrom(field: "position")
-    withdrawBaseMarketInteractions: [WithdrawBaseMarketInteraction!]! @derivedFrom(field: "position")
-    absorbDebtMarketInteractions: [AbsorbDebtMarketInteraction!]! @derivedFrom(field: "position")
-    supplyCollateralMarketInteractions: [SupplyCollateralMarketInteraction!]! @derivedFrom(field: "position")
-    withdrawCollateralMarketInteractions: [WithdrawCollateralMarketInteraction!]! @derivedFrom(field: "position")
-    transferFromCollateralMarketInteractions: [TransferCollateralMarketInteraction!]! @derivedFrom(field: "fromPosition")
-    transferToCollateralMarketInteractions: [TransferCollateralMarketInteraction!]! @derivedFrom(field: "toPosition")
-    absorbCollateralMarketInteractions: [AbsorbCollateralMarketInteraction!]! @derivedFrom(field: "position") 
+    supplyBaseInteractions: [SupplyBaseInteraction!]! @derivedFrom(field: "position")
+    withdrawBaseInteractions: [WithdrawBaseInteraction!]! @derivedFrom(field: "position")
+    absorbDebtInteractions: [AbsorbDebtInteraction!]! @derivedFrom(field: "position")
+    supplyCollateralInteractions: [SupplyCollateralInteraction!]! @derivedFrom(field: "position")
+    withdrawCollateralInteractions: [WithdrawCollateralInteraction!]! @derivedFrom(field: "position")
+    transferFromCollateralInteractions: [TransferCollateralInteraction!]! @derivedFrom(field: "fromPosition")
+    transferToCollateralInteractions: [TransferCollateralInteraction!]! @derivedFrom(field: "toPosition")
+    absorbCollateralInteractions: [AbsorbCollateralInteraction!]! @derivedFrom(field: "position")
 
     positionAccountingSnapshots: [PositionAccountingSnapshot!] @derivedFrom(field: "position")
 }
@@ -427,7 +483,6 @@ type MarketDailyUsage @entity {
     usage: Usage!
 }
 
-
 # Helper to track active accounts
 type _ActiveAccount @entity {
     "Address + use case + id"
@@ -438,7 +493,8 @@ type _ActiveAccount @entity {
 # Interactions
 ####
 
-interface ProtocolInteraction {
+type Transaction @entity(immutable: true) {
+    "Event hash + Log index"
     id: Bytes!
 
     hash: Bytes!
@@ -447,182 +503,93 @@ interface ProtocolInteraction {
     timestamp: BigInt!
 
     from: Bytes!
-    to: Bytes!
+    to: Bytes
 
     gasLimit: BigInt!
     gasPrice: BigInt!
     gasUsed: BigInt
 }
 
-interface MarketInteraction implements ProtocolInteraction {
+type SupplyBaseInteraction @entity(immutable: true) {
+    "Event hash + logIndex"
     id: Bytes!
 
-    hash: Bytes!
-    logIndex: BigInt!
-    blockNumber: BigInt!
-    timestamp: BigInt!
-
-    "where value is being transferred from"
-    from: Bytes!
-    "where value is being transferred to"
-    to: Bytes!
-
-    gasLimit: BigInt!
-    gasPrice: BigInt!
-    gasUsed: BigInt
-
-    market: Market!
-}
-
-type SupplyBaseMarketInteraction implements MarketInteraction @entity(immutable: true) {
-    "event hash + logIndex"
-    id: Bytes!
-
-    hash: Bytes!
-    logIndex: BigInt!
-    blockNumber: BigInt!
-    timestamp: BigInt!
-
-    "where value is being transferred from"
-    from: Bytes!
-    "where value is being transferred to"
-    to: Bytes!
-
-    gasLimit: BigInt!
-    gasPrice: BigInt!
-    gasUsed: BigInt
+    transaction: Transaction!
 
     market: Market!
     position: Position!
+    supplier: Bytes!
 
     asset: BaseToken!
     amount: BigInt!
     amountUsd: BigDecimal!
 }
 
-type WithdrawBaseMarketInteraction implements MarketInteraction @entity(immutable: true) {
+type WithdrawBaseInteraction @entity(immutable: true) {
     "event hash + logIndex"
     id: Bytes!
 
-    hash: Bytes!
-    logIndex: BigInt!
-    blockNumber: BigInt!
-    timestamp: BigInt!
-
-    "where value is being transferred from"
-    from: Bytes!
-    "where value is being transferred to"
-    to: Bytes!
-
-    gasLimit: BigInt!
-    gasPrice: BigInt!
-    gasUsed: BigInt
+    transaction: Transaction!
 
     market: Market!
     position: Position!
+    destination: Bytes!
 
     asset: BaseToken!
     amount: BigInt!
     amountUsd: BigDecimal!
 }
 
-type AbsorbDebtMarketInteraction implements MarketInteraction @entity(immutable: true) {
+type AbsorbDebtInteraction @entity(immutable: true) {
     "event hash + logIndex"
     id: Bytes!
 
-    hash: Bytes!
-    logIndex: BigInt!
-    blockNumber: BigInt!
-    timestamp: BigInt!
-
-    "where value is being transferred from"
-    from: Bytes!
-    "where value is being transferred to"
-    to: Bytes!
-
-    gasLimit: BigInt!
-    gasPrice: BigInt!
-    gasUsed: BigInt
+    transaction: Transaction!
 
     market: Market!
     position: Position!
-
-    asset: BaseToken!
-    amount: BigInt!
-    amountUsd: BigDecimal!
-
     absorber: Bytes!
+
+    asset: BaseToken!
+    amount: BigInt!
+    amountUsd: BigDecimal!
 }
 
-type SupplyCollateralMarketInteraction implements MarketInteraction @entity(immutable: true) {
-    "event hash + logIndex"
+type SupplyCollateralInteraction @entity(immutable: true) {
+    "Event hash + logIndex"
     id: Bytes!
 
-    hash: Bytes!
-    logIndex: BigInt!
-    blockNumber: BigInt!
-    timestamp: BigInt!
-
-    "where value is being transferred from"
-    from: Bytes!
-    "where value is being transferred to"
-    to: Bytes!
-
-    gasLimit: BigInt!
-    gasPrice: BigInt!
-    gasUsed: BigInt
+    transaction: Transaction!
 
     market: Market!
     position: Position!
+    supplier: Bytes!
 
     asset: CollateralToken!
     amount: BigInt!
     amountUsd: BigDecimal!
 }
 
-type WithdrawCollateralMarketInteraction implements MarketInteraction @entity(immutable: true) {
-    "event hash + logIndex"
+type WithdrawCollateralInteraction @entity(immutable: true) {
+    "Event hash + logIndex"
     id: Bytes!
 
-    hash: Bytes!
-    logIndex: BigInt!
-    blockNumber: BigInt!
-    timestamp: BigInt!
-
-    "where value is being transferred from"
-    from: Bytes!
-    "where value is being transferred to"
-    to: Bytes!
-
-    gasLimit: BigInt!
-    gasPrice: BigInt!
-    gasUsed: BigInt
+    transaction: Transaction!
 
     market: Market!
     position: Position!
+    destination: Bytes!
 
     asset: CollateralToken!
     amount: BigInt!
     amountUsd: BigDecimal!
 }
 
-type TransferCollateralMarketInteraction implements MarketInteraction @entity(immutable: true) {
+type TransferCollateralInteraction @entity(immutable: true) {
     "event hash + logIndex"
     id: Bytes!
 
-    hash: Bytes!
-    logIndex: BigInt!
-    blockNumber: BigInt!
-    timestamp: BigInt!
-
-    "where value is being transferred from"
-    from: Bytes!
-    "where value is being transferred to"
-    to: Bytes!
-
-    gasLimit: BigInt!
-    gasPrice: BigInt!
-    gasUsed: BigInt
+    transaction: Transaction!
 
     market: Market!
     fromPosition: Position!
@@ -633,80 +600,60 @@ type TransferCollateralMarketInteraction implements MarketInteraction @entity(im
     amountUsd: BigDecimal!
 }
 
-type AbsorbCollateralMarketInteraction implements MarketInteraction @entity(immutable: true) {
-    "event hash + logIndex"
+type AbsorbCollateralInteraction @entity(immutable: true) {
+    "Event hash + logIndex"
     id: Bytes!
 
-    hash: Bytes!
-    logIndex: BigInt!
-    blockNumber: BigInt!
-    timestamp: BigInt!
-
-    "where value is being transferred from"
-    from: Bytes!
-    "where value is being transferred to"
-    to: Bytes!
-
-    gasLimit: BigInt!
-    gasPrice: BigInt!
-    gasUsed: BigInt
+    transaction: Transaction!
 
     market: Market!
     position: Position!
+    absorber: Bytes!
 
     asset: CollateralToken!
     amount: BigInt!
     amountUsd: BigDecimal!
-
-    absorber: Bytes!
 }
 
-type BuyCollateralMarketInteraction implements MarketInteraction @entity(immutable: true) {
+type BuyCollateralInteraction @entity(immutable: true) {
     "event hash + logIndex"
     id: Bytes!
 
-    hash: Bytes!
-    logIndex: BigInt!
-    blockNumber: BigInt!
-    timestamp: BigInt!
-
-    "where value is being transferred from"
-    from: Bytes!
-    "where value is being transferred to"
-    to: Bytes!
-
-    gasLimit: BigInt!
-    gasPrice: BigInt!
-    gasUsed: BigInt
+    transaction: Transaction!
 
     market: Market!
+    buyer: Bytes!
 
     asset: CollateralToken!
     collateralAmount: BigInt!
     baseAmount: BigInt!
-    amountUsd: BigDecimal!
+    collateralAmountUsd: BigDecimal!
+    baseAmountUsd: BigDecimal!
 }
 
-type WithdrawReservesMarketInteraction implements MarketInteraction @entity(immutable: true) {
+type WithdrawReservesInteraction @entity(immutable: true) {
     "event hash + logIndex"
     id: Bytes!
 
-    hash: Bytes!
-    logIndex: BigInt!
-    blockNumber: BigInt!
-    timestamp: BigInt!
-
-    "where value is being transferred from"
-    from: Bytes!
-    "where value is being transferred to"
-    to: Bytes!
-
-    gasLimit: BigInt!
-    gasPrice: BigInt!
-    gasUsed: BigInt
+    transaction: Transaction!
 
     market: Market!
+    destination: Bytes!
 
+    amount: BigInt!
+    amountUsd: BigDecimal!
+}
+
+type ClaimRewardsInteraction @entity(immutable: true) {
+    "event hash + logIndex"
+    id: Bytes!
+
+    transaction: Transaction!
+
+    account: Account!
+    destination: Bytes!
+
+    token: Token!
     amount: BigInt!
     amountUsd: BigDecimal!
 }

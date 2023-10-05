@@ -42,14 +42,14 @@ export function getOrCreateUsage(id: Bytes): Usage {
     return usage;
 }
 
-function getOrCreateProtocolHourlyUsage(hour: BigInt): ProtocolHourlyUsage {
+function getOrCreateProtocolHourlyUsage(hour: BigInt, event: ethereum.Event): ProtocolHourlyUsage {
     const id = Bytes.fromByteArray(Bytes.fromBigInt(hour));
     let hourlyUsage = ProtocolHourlyUsage.load(id);
 
     if (!hourlyUsage) {
         hourlyUsage = new ProtocolHourlyUsage(id);
 
-        const protocol = getOrCreateProtocol();
+        const protocol = getOrCreateProtocol(event);
         const usage = getOrCreateUsage(Bytes.fromUTF8("PROTOCOL_HOUR").concat(id));
 
         hourlyUsage.protocol = protocol.id;
@@ -62,14 +62,14 @@ function getOrCreateProtocolHourlyUsage(hour: BigInt): ProtocolHourlyUsage {
     return hourlyUsage;
 }
 
-function getOrCreateProtocolDailyUsage(day: BigInt): ProtocolDailyUsage {
+function getOrCreateProtocolDailyUsage(day: BigInt, event: ethereum.Event): ProtocolDailyUsage {
     const id = Bytes.fromByteArray(Bytes.fromBigInt(day));
     let dailyUsage = ProtocolDailyUsage.load(id);
 
     if (!dailyUsage) {
         dailyUsage = new ProtocolDailyUsage(id);
 
-        const protocol = getOrCreateProtocol();
+        const protocol = getOrCreateProtocol(event);
         const usage = getOrCreateUsage(Bytes.fromUTF8("PROTOCOL_DAY").concat(id));
 
         dailyUsage.protocol = protocol.id;
@@ -143,7 +143,7 @@ export function updateUsageMetrics(
     const day = event.block.timestamp.div(SECONDS_PER_DAY);
     const hour = event.block.timestamp.div(SECONDS_PER_HOUR);
 
-    const protocol = getOrCreateProtocol();
+    const protocol = getOrCreateProtocol(event);
 
     const newProtocolCumulativeAcc = tryToCreateActiveAccount(Address.fromBytes(account.id), "PROTOCOL");
     const newProtocolHourlyAcc = tryToCreateActiveAccount(
@@ -166,8 +166,8 @@ export function updateUsageMetrics(
         baseMarketAccId.concat(day.toString())
     );
 
-    const protocolHourlyUsageContainer = getOrCreateProtocolHourlyUsage(hour);
-    const protocolDailyUsageContainer = getOrCreateProtocolDailyUsage(day);
+    const protocolHourlyUsageContainer = getOrCreateProtocolHourlyUsage(hour, event);
+    const protocolDailyUsageContainer = getOrCreateProtocolDailyUsage(day, event);
 
     const marketHourlyUsageContainer = getOrCreateMarketHourlyUsage(market, hour);
     const marketDailyUsageContainer = getOrCreateMarketDailyUsage(market, day);

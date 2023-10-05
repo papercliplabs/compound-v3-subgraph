@@ -3,7 +3,7 @@ import { Upgraded as UpgradedEvent, SetFactory as SetFactoryEvent } from "../../
 import { getOrCreateProtocol } from "../mappingHelpers/protocol";
 
 export function handleUpgraded(event: UpgradedEvent): void {
-    let protocol = getOrCreateProtocol();
+    let protocol = getOrCreateProtocol(event);
     protocol.configuratorImplementation = event.params.implementation;
     protocol.save();
 }

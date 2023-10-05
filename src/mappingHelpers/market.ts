@@ -42,6 +42,7 @@ import {
 } from "./token";
 import { getOrCreateUsage } from "./usage";
 import { getOrCreateMarketCollateralBalance, updateMarketCollateralBalanceUsd } from "./collateralBalance";
+import { getOrCreateProtocol, getOrCreateProtocolAccounting, updateProtocolAccounting } from "./protocol";
 
 ////
 // Market Configuration
@@ -299,6 +300,11 @@ export function updateMarketAccounting(market: Market, accounting: MarketAccount
         accounting.totalBaseBorrow.toBigDecimal()
     );
 
+    // Update protocol accounting whenever market accounting changes
+    const protocol = getOrCreateProtocol(event);
+    const protocolAccounting = getOrCreateProtocolAccounting(protocol, event);
+    updateProtocolAccounting(protocol, protocolAccounting, event);
+
     // Create snapshots (if necessary)
     createMarketAccountingSnapshots(accounting, event);
 }
@@ -377,6 +383,13 @@ export function getOrCreateMarket(marketId: Address, event: ethereum.Event): Mar
         market.accounting = marketAccounting.id;
 
         market.save();
+
+        // Add to protocol
+        const protocol = getOrCreateProtocol(event);
+        const markets = protocol.markets;
+        markets.push(market.id);
+        protocol.markets = markets;
+        protocol.save();
     }
 
     return market;
