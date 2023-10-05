@@ -22,24 +22,26 @@ import { getOrCreateMarketConfiguration } from "./market";
 import { getOrCreateToken, getTokenPriceUsd } from "./token";
 import { computeTokenValueUsd } from "../common/utils";
 
-function createTransaction(event: ethereum.Event): Transaction {
-    const id = event.transaction.hash.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
+function getOrCreateTransaction(event: ethereum.Event): Transaction {
+    const id = event.transaction.hash;
+    let transaction = Transaction.load(id);
 
-    const transaction = new Transaction(id);
+    if (!transaction) {
+        transaction = new Transaction(id);
 
-    transaction.hash = event.transaction.hash;
-    transaction.logIndex = event.logIndex;
-    transaction.blockNumber = event.block.number;
-    transaction.timestamp = event.block.timestamp;
+        transaction.hash = event.transaction.hash;
+        transaction.blockNumber = event.block.number;
+        transaction.timestamp = event.block.timestamp;
 
-    transaction.from = event.transaction.from;
-    transaction.to = event.transaction.to;
+        transaction.from = event.transaction.from;
+        transaction.to = event.transaction.to;
 
-    transaction.gasLimit = event.transaction.gasLimit;
-    transaction.gasPrice = event.transaction.gasPrice;
-    transaction.gasUsed = event.receipt ? event.receipt!.gasUsed : null;
+        transaction.gasLimit = event.transaction.gasLimit;
+        transaction.gasPrice = event.transaction.gasPrice;
+        transaction.gasUsed = event.receipt ? event.receipt!.gasUsed : null;
 
-    transaction.save();
+        transaction.save();
+    }
 
     return transaction;
 }
@@ -51,13 +53,14 @@ export function createSupplyBaseInteraction(
     amount: BigInt,
     event: ethereum.Event
 ): void {
-    const transaction = createTransaction(event);
+    const transaction = getOrCreateTransaction(event);
     const marketConfiguration = getOrCreateMarketConfiguration(market, event);
     const baseToken = BaseToken.load(marketConfiguration.baseToken)!;
     const token = getOrCreateToken(Address.fromBytes(baseToken.token), event);
     const tokenPrice = getTokenPriceUsd(baseToken, event);
+    const id = transaction.id.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
 
-    const interaction = new SupplyBaseInteraction(transaction.id);
+    const interaction = new SupplyBaseInteraction(id);
 
     interaction.transaction = transaction.id;
 
@@ -79,13 +82,14 @@ export function createWithdrawBaseInteraction(
     amount: BigInt,
     event: ethereum.Event
 ): void {
-    const transaction = createTransaction(event);
+    const transaction = getOrCreateTransaction(event);
     const marketConfiguration = getOrCreateMarketConfiguration(market, event);
     const baseToken = BaseToken.load(marketConfiguration.baseToken)!;
     const token = getOrCreateToken(Address.fromBytes(baseToken.token), event);
     const tokenPrice = getTokenPriceUsd(baseToken, event);
+    const id = transaction.id.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
 
-    const interaction = new WithdrawBaseInteraction(transaction.id);
+    const interaction = new WithdrawBaseInteraction(id);
 
     interaction.transaction = transaction.id;
 
@@ -107,13 +111,14 @@ export function createAbsorbDebtInteraction(
     amount: BigInt,
     event: ethereum.Event
 ): void {
-    const transaction = createTransaction(event);
+    const transaction = getOrCreateTransaction(event);
     const marketConfiguration = getOrCreateMarketConfiguration(market, event);
     const baseToken = BaseToken.load(marketConfiguration.baseToken)!;
     const token = getOrCreateToken(Address.fromBytes(baseToken.token), event);
     const tokenPrice = getTokenPriceUsd(baseToken, event);
+    const id = transaction.id.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
 
-    const interaction = new AbsorbDebtInteraction(transaction.id);
+    const interaction = new AbsorbDebtInteraction(id);
 
     interaction.transaction = transaction.id;
 
@@ -136,13 +141,14 @@ export function createSupplyCollateralInteraction(
     amount: BigInt,
     event: ethereum.Event
 ): void {
-    const transaction = createTransaction(event);
+    const transaction = getOrCreateTransaction(event);
     const marketConfiguration = getOrCreateMarketConfiguration(market, event);
     const baseToken = BaseToken.load(marketConfiguration.baseToken)!;
     const token = getOrCreateToken(Address.fromBytes(baseToken.token), event);
     const tokenPrice = getTokenPriceUsd(baseToken, event);
+    const id = transaction.id.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
 
-    const interaction = new SupplyCollateralInteraction(transaction.id);
+    const interaction = new SupplyCollateralInteraction(id);
 
     interaction.transaction = transaction.id;
 
@@ -165,13 +171,14 @@ export function createWithdrawCollateralInteraction(
     amount: BigInt,
     event: ethereum.Event
 ): void {
-    const transaction = createTransaction(event);
+    const transaction = getOrCreateTransaction(event);
     const marketConfiguration = getOrCreateMarketConfiguration(market, event);
     const baseToken = BaseToken.load(marketConfiguration.baseToken)!;
     const token = getOrCreateToken(Address.fromBytes(baseToken.token), event);
     const tokenPrice = getTokenPriceUsd(baseToken, event);
+    const id = transaction.id.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
 
-    const interaction = new WithdrawCollateralInteraction(transaction.id);
+    const interaction = new WithdrawCollateralInteraction(id);
 
     interaction.transaction = transaction.id;
 
@@ -194,13 +201,14 @@ export function createTransferCollateralInteraction(
     amount: BigInt,
     event: ethereum.Event
 ): void {
-    const transaction = createTransaction(event);
+    const transaction = getOrCreateTransaction(event);
     const marketConfiguration = getOrCreateMarketConfiguration(market, event);
     const baseToken = BaseToken.load(marketConfiguration.baseToken)!;
     const token = getOrCreateToken(Address.fromBytes(baseToken.token), event);
     const tokenPrice = getTokenPriceUsd(baseToken, event);
+    const id = transaction.id.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
 
-    const interaction = new TransferCollateralInteraction(transaction.id);
+    const interaction = new TransferCollateralInteraction(id);
 
     interaction.transaction = transaction.id;
 
@@ -223,13 +231,14 @@ export function createAbsorbCollateralInteraction(
     amount: BigInt,
     event: ethereum.Event
 ): void {
-    const transaction = createTransaction(event);
+    const transaction = getOrCreateTransaction(event);
     const marketConfiguration = getOrCreateMarketConfiguration(market, event);
     const baseToken = BaseToken.load(marketConfiguration.baseToken)!;
     const token = getOrCreateToken(Address.fromBytes(baseToken.token), event);
     const tokenPrice = getTokenPriceUsd(baseToken, event);
+    const id = transaction.id.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
 
-    const interaction = new AbsorbCollateralInteraction(transaction.id);
+    const interaction = new AbsorbCollateralInteraction(id);
 
     interaction.transaction = transaction.id;
 
@@ -252,14 +261,15 @@ export function createBuyCollateralInteraction(
     baseAmount: BigInt,
     event: ethereum.Event
 ): void {
-    const transaction = createTransaction(event);
+    const transaction = getOrCreateTransaction(event);
     const marketConfiguration = getOrCreateMarketConfiguration(market, event);
     const baseToken = BaseToken.load(marketConfiguration.baseToken)!;
     const token = getOrCreateToken(Address.fromBytes(baseToken.token), event);
     const tokenPrice = getTokenPriceUsd(baseToken, event);
     const collateralPrice = getTokenPriceUsd(collateralAmount, event);
+    const id = transaction.id.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
 
-    const interaction = new BuyCollateralInteraction(transaction.id);
+    const interaction = new BuyCollateralInteraction(id);
 
     interaction.transaction = transaction.id;
 
@@ -285,13 +295,14 @@ export function createWithdrawReservesInteraction(
     amount: BigInt,
     event: ethereum.Event
 ): void {
-    const transaction = createTransaction(event);
+    const transaction = getOrCreateTransaction(event);
     const marketConfiguration = getOrCreateMarketConfiguration(market, event);
     const baseToken = BaseToken.load(marketConfiguration.baseToken)!;
     const token = getOrCreateToken(Address.fromBytes(baseToken.token), event);
     const tokenPrice = getTokenPriceUsd(baseToken, event);
+    const id = transaction.id.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
 
-    const interaction = new WithdrawReservesInteraction(transaction.id);
+    const interaction = new WithdrawReservesInteraction(id);
 
     interaction.transaction = transaction.id;
 
@@ -311,10 +322,11 @@ export function createClaimRewardsInteraction(
     amount: BigInt,
     event: ethereum.Event
 ): void {
-    const transaction = createTransaction(event);
+    const transaction = getOrCreateTransaction(event);
     const tokenPrice = getTokenPriceUsd(token, event);
+    const id = transaction.id.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
 
-    const interaction = new ClaimRewardsInteraction(transaction.id);
+    const interaction = new ClaimRewardsInteraction(id);
 
     interaction.transaction = transaction.id;
 

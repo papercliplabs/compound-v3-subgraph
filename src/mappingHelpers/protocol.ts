@@ -43,8 +43,6 @@ export function updateProtocolAccounting(
     accounting: ProtocolAccounting,
     event: ethereum.Event
 ): void {
-    accounting.lastUpdatedBlock = event.block.number;
-
     let totalSupplyUsd = ZERO_BD;
     let totalBorrowUsd = ZERO_BD;
     let reserveBalanceUsd = ZERO_BD;
@@ -80,6 +78,8 @@ export function updateProtocolAccounting(
         sumNetBorrowApr = sumNetBorrowApr.plus(marketAccounting.netBorrowApr);
     }
 
+    accounting.lastUpdatedBlock = event.block.number;
+    accounting.protocol = protocol.id;
     accounting.totalSupplyUsd = totalSupplyUsd;
     accounting.totalBorrowUsd = totalBorrowUsd;
     accounting.reserveBalanceUsd = reserveBalanceUsd;
@@ -113,7 +113,7 @@ function createProtocolAccountingSnapshots(accounting: ProtocolAccounting, event
     let weeklyAccounting = WeeklyProtocolAccounting.load(weeklyId);
 
     if (!hourlyAccounting) {
-        const accountingId = hourlyId;
+        const accountingId = accounting.protocol.concat(hourlyId);
 
         // Copy existing config
         const copiedAccounting = new ProtocolAccounting(accountingId);
@@ -128,6 +128,7 @@ function createProtocolAccountingSnapshots(accounting: ProtocolAccounting, event
 
         hourlyAccounting = new HourlyProtocolAccounting(hourlyId);
         hourlyAccounting.hour = hour;
+        hourlyAccounting.timestamp = event.block.timestamp;
         hourlyAccounting.protocol = CONFIGURATOR_PROXY_ADDRESS;
         hourlyAccounting.accounting = copiedAccounting.id;
         hourlyAccounting.save();
@@ -135,6 +136,7 @@ function createProtocolAccountingSnapshots(accounting: ProtocolAccounting, event
         if (!dailyAccounting) {
             dailyAccounting = new DailyProtocolAccounting(hourlyId);
             dailyAccounting.day = day;
+            dailyAccounting.timestamp = event.block.timestamp;
             dailyAccounting.protocol = CONFIGURATOR_PROXY_ADDRESS;
             dailyAccounting.accounting = copiedAccounting.id;
             dailyAccounting.save();
@@ -142,6 +144,7 @@ function createProtocolAccountingSnapshots(accounting: ProtocolAccounting, event
         if (!weeklyAccounting) {
             weeklyAccounting = new WeeklyProtocolAccounting(hourlyId);
             weeklyAccounting.week = week;
+            weeklyAccounting.timestamp = event.block.timestamp;
             weeklyAccounting.protocol = CONFIGURATOR_PROXY_ADDRESS;
             weeklyAccounting.accounting = copiedAccounting.id;
             weeklyAccounting.save();

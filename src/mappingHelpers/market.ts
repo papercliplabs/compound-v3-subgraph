@@ -323,7 +323,7 @@ function createMarketAccountingSnapshots(accounting: MarketAccounting, event: et
     let weeklyAccounting = WeeklyMarketAccounting.load(weeklyId);
 
     if (!hourlyAccounting) {
-        const accountingId = hourlyId;
+        const accountingId = accounting.market.concat(hourlyId);
 
         // Copy existing config
         const copiedAccounting = new MarketAccounting(accountingId);
@@ -338,6 +338,7 @@ function createMarketAccountingSnapshots(accounting: MarketAccounting, event: et
 
         hourlyAccounting = new HourlyMarketAccounting(hourlyId);
         hourlyAccounting.hour = hour;
+        hourlyAccounting.timestamp = event.block.timestamp;
         hourlyAccounting.market = accounting.market;
         hourlyAccounting.accounting = copiedAccounting.id;
         hourlyAccounting.save();
@@ -345,6 +346,7 @@ function createMarketAccountingSnapshots(accounting: MarketAccounting, event: et
         if (!dailyAccounting) {
             dailyAccounting = new DailyMarketAccounting(hourlyId);
             dailyAccounting.day = day;
+            dailyAccounting.timestamp = event.block.timestamp;
             dailyAccounting.market = accounting.market;
             dailyAccounting.accounting = copiedAccounting.id;
             dailyAccounting.save();
@@ -352,6 +354,7 @@ function createMarketAccountingSnapshots(accounting: MarketAccounting, event: et
         if (!weeklyAccounting) {
             weeklyAccounting = new WeeklyMarketAccounting(hourlyId);
             weeklyAccounting.week = week;
+            weeklyAccounting.timestamp = event.block.timestamp;
             weeklyAccounting.market = accounting.market;
             weeklyAccounting.accounting = copiedAccounting.id;
             weeklyAccounting.save();

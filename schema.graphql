@@ -1,76 +1,529 @@
 ####
-# Protocol
+# Core entities
 ####
 
 type Protocol @entity {
     "Configurator proxy address"
     id: Bytes!
 
+    "Configurator proxy address"
     configuratorProxy: Bytes!
+    "Current address of the configurator implementation"
     configuratorImplementation: Bytes
 
+    "Markets that exist in the protocol"
     markets: [Market!]!
 
+    "Current accounting for the whole protocol"
     accounting: ProtocolAccounting!
 
+    "Current cumulative usage for the whole protocol"
     cumulativeUsage: Usage!
 
+    ####
     # Derived
+    ####
+
+    "Historical snapshots of hourly protocol usage"
     hourlyUsage: [ProtocolHourlyUsage!]! @derivedFrom(field: "protocol")
+    "Historical snapshots of daily protocol usage"
     dailyUsage: [ProtocolDailyUsage!]! @derivedFrom(field: "protocol")
 
+    "Historical snapshots of hourly protocol accounting"
     hourlyProtocolAccounting: [HourlyProtocolAccounting!]! @derivedFrom(field: "protocol")
+    "Historical snapshots of daily protocol accounting"
     dailyProtocolAccounting: [DailyProtocolAccounting!]! @derivedFrom(field: "protocol")
+    "Historical snapshots of weekly protocol accounting"
     weeklyProtocolAccounting: [WeeklyProtocolAccounting!]! @derivedFrom(field: "protocol")
 }
 
-type ProtocolAccounting @entity {
-    "Name + time qualifier + log index (optional)"
+type Market @entity {
+    "Comet proxy address"
     id: Bytes!
+    "Comet proxy address"
+    cometProxy: Bytes!
+    "Protocol this market is part of"
+    protocol: Protocol!
+    "Block number the market was created"
+    creationBlockNumber: BigInt!
 
-    lastUpdatedBlock: BigInt!
+    "Current configuration of this market"
+    configuration: MarketConfiguration!
 
-    totalSupplyUsd: BigDecimal!
-    totalBorrowUsd: BigDecimal!
-    reserveBalanceUsd: BigDecimal!
-    collateralBalanceUsd: BigDecimal!
-    collateralReservesBalanceUsd: BigDecimal!
-    totalReserveBalanceUsd: BigDecimal!
+    "Current accounting of this market"
+    accounting: MarketAccounting!
 
-    "Percent usage of the protocol, that is totalBorrowUsd / totalSupplyUsd"
-    utilization: BigDecimal!
+    "Current cumulative usage of this market"
+    cumulativeUsage: Usage!
 
-    # APR's
-    avgSupplyApr: BigDecimal!
-    avgBorrowApr: BigDecimal!
-    avgRewardSupplyApr: BigDecimal!
-    avgRewardBorrowApr: BigDecimal!
+    ####
+    # Derived
+    ####
 
-    avgNetSupplyApr: BigDecimal!
-    avgNetBorrowApr: BigDecimal!
+    "Current collateral balances of this market"
+    collateralBalances: [MarketCollateralBalance!]! @derivedFrom(field: "market")
+    "Current positions in this market"
+    positions: [Position!]! @derivedFrom(field: "market")
 
-    collateralization: BigDecimal!
+    "All interactions where the base asset was supplied to this market, including those repaying loans"
+    supplyBaseInteractions: [SupplyBaseInteraction!]! @derivedFrom(field: "market")
+    "All interactions where the base asset was withdraw from this market, including those taking loans"
+    withdrawBaseInteractions: [WithdrawBaseInteraction!]! @derivedFrom(field: "market")
+    "All interactions where a position was liquidated in this market"
+    absorbDebtInteractions: [AbsorbDebtInteraction!]! @derivedFrom(field: "market")
+    "All interactions where a collateral asset was supplied to this market"
+    supplyCollateralInteractions: [SupplyCollateralInteraction!]! @derivedFrom(field: "market")
+    "All interactions where a collateral asset was withdrawn from this market"
+    withdrawCollateralInteractions: [WithdrawCollateralInteraction!]! @derivedFrom(field: "market")
+    "All interactions where a collateral asset was transferred in this market"
+    transferCollateralInteractions: [TransferCollateralInteraction!]! @derivedFrom(field: "market")
+    "All interactions where a collateral asset was absorbed by the market during a liquidation"
+    absorbCollateralInteractions: [AbsorbCollateralInteraction!]! @derivedFrom(field: "market")
+
+    "Historical snapshots of hourly market usage"
+    hourlyUsage: [MarketHourlyUsage!]! @derivedFrom(field: "market")
+    "Historical snapshots of daily market usage"
+    dailyUsage: [MarketDailyUsage!]! @derivedFrom(field: "market")
+
+    "Historical snapshots of market configuration changes, these only get taken on a config change (not periodically)"
+    configurationSnapshots: [MarketConfigurationSnapshot!]! @derivedFrom(field: "market")
+
+    "Historical snapshots of hourly market accounting"
+    hourlyMarketAccounting: [HourlyMarketAccounting!]! @derivedFrom(field: "market")
+    "Historical snapshots of daily market accounting"
+    dailyMarketAccounting: [DailyMarketAccounting!]! @derivedFrom(field: "market")
+    "Historical snapshots of weekly market accounting"
+    weeklyMarketAccounting: [WeeklyMarketAccounting!]! @derivedFrom(field: "market")
 }
 
-type HourlyProtocolAccounting @entity {
+type Position @entity {
+    "Market proxy address + owner address"
     id: Bytes!
-    hour: BigInt!
+    "Block number the position was created"
+    creationBlockNumber: BigInt!
+    "Market the position is in"
+    market: Market!
+    "Owner of the position"
+    account: Account!
+
+    "Current accounting of this position"
+    accounting: PositionAccounting!
+
+    ####
+    # Derived
+    ####
+
+    "Current collateral balances of this position"
+    collateralBalances: [PositionCollateralBalance!]! @derivedFrom(field: "position")
+
+    "All interactions where the base asset was supplied to this position, including those repaying loans"
+    supplyBaseInteractions: [SupplyBaseInteraction!]! @derivedFrom(field: "position")
+    "All interactions where the base asset was withdraw from this position, including those taking loans"
+    withdrawBaseInteractions: [WithdrawBaseInteraction!]! @derivedFrom(field: "position")
+    "All interactions where this position was liquidated"
+    absorbDebtInteractions: [AbsorbDebtInteraction!]! @derivedFrom(field: "position")
+    "All interactions where a collateral asset was supplied to this position"
+    supplyCollateralInteractions: [SupplyCollateralInteraction!]! @derivedFrom(field: "position")
+    "All interactions where a collateral asset was withdrawn from this position"
+    withdrawCollateralInteractions: [WithdrawCollateralInteraction!]! @derivedFrom(field: "position")
+    "All interactions where a collateral asset was transferred from this position"
+    transferFromCollateralInteractions: [TransferCollateralInteraction!]! @derivedFrom(field: "fromPosition")
+    "All interactions where a collateral asset was transferred to this position"
+    transferToCollateralInteractions: [TransferCollateralInteraction!]! @derivedFrom(field: "toPosition")
+    "All interactions where a collateral asset was absorbed by the market during a liquidation of this position"
+    absorbCollateralInteractions: [AbsorbCollateralInteraction!]! @derivedFrom(field: "position")
+
+    "Historical snapshots of position accounting changes, these only get taken when the position accounting changes (not periodically)"
+    positionAccountingSnapshots: [PositionAccountingSnapshot!] @derivedFrom(field: "position")
+}
+
+####
+# Configuration
+####
+
+type MarketConfiguration @entity {
+    "Market proxy address or block number + log index for snapshots"
+    id: Bytes!
+    "Market to configuration is for"
+    market: Market!
+
+    "Comet implementation that the market proxy points to"
+    cometImplementation: Bytes
+
+    "Last block that this configuration was updated"
+    lastConfigurationUpdateBlockNumber: BigInt!
+    "Name of the market"
+    name: String!
+    "Symbol for the ERC20 that market represents"
+    symbol: String!
+    "Factory contract address for the market"
+    factory: Bytes!
+    "Governor of the market"
+    governor: Bytes!
+    "Pause guardian for the market"
+    pauseGuardian: Bytes!
+    "Comet extension delegate for the market"
+    extensionDelegate: Bytes!
+
+    "Supply rate model utilization kink in percent"
+    supplyKink: BigDecimal!
+    "Slope of the supply rate model when the utilization is below the supply kink"
+    supplyPerSecondInterestRateSlopeLow: BigInt!
+    "Slope of the supply rate model when the utilization is above the supply kink"
+    supplyPerSecondInterestRateSlopeHigh: BigInt!
+    "Base for the supply rate model"
+    supplyPerSecondInterestRateBase: BigInt!
+
+    "Borrow rate model utilization kink in percent"
+    borrowKink: BigDecimal!
+    "Slope of the borrow rate model when the utilization is below the borrow kink"
+    borrowPerSecondInterestRateSlopeLow: BigInt!
+    "Slope of the borrow rate model when the utilization is above the borrow kink"
+    borrowPerSecondInterestRateSlopeHigh: BigInt!
+    "Base for the borrow rate model"
+    borrowPerSecondInterestRateBase: BigInt!
+
+    "Store front factor used to compute the discount factor for liquidations"
+    storeFrontPriceFactor: BigInt!
+    "Tracking index scale"
+    trackingIndexScale: BigInt!
+
+    "Base tracking supply speed for rewards"
+    baseTrackingSupplySpeed: BigInt!
+    "Base tracking borrow speed for rewards"
+    baseTrackingBorrowSpeed: BigInt!
+    "Minimum base asset in market before rewards will accrue"
+    baseMinForRewards: BigInt!
+    "Smallest amount of base that can be borrowed"
+    baseBorrowMin: BigInt!
+    "Target base reserves for the market, when reserve drop below collateral reserves become for sale to bring base reserves above this"
+    targetReserves: BigInt!
+
+    "Base tokens for the market"
+    baseToken: BaseToken!
+    "List of collateral tokens for the market"
+    collateralTokens: [CollateralToken!]!
+}
+
+####
+# Accounting
+####
+
+type ProtocolAccounting @entity {
+    "Protocol ID + hour number for snapshots"
+    id: Bytes!
+
+    "Protocol the accounting is for"
     protocol: Protocol!
+
+    "Last block the accounting was updated"
+    lastUpdatedBlock: BigInt!
+
+    "Total amount supplied in USD to the protocol"
+    totalSupplyUsd: BigDecimal!
+    "Total amount borrowed in USD from the protocol"
+    totalBorrowUsd: BigDecimal!
+    "Total base assets reserve balance in USD of protocol"
+    reserveBalanceUsd: BigDecimal!
+    "Total collateral balance in USD of the protocol"
+    collateralBalanceUsd: BigDecimal!
+    "Total collateral reserve balance in USD of the protocol"
+    collateralReservesBalanceUsd: BigDecimal!
+    "Total reserve balance in USD of the protocol (base reserves + collateral reserves)"
+    totalReserveBalanceUsd: BigDecimal!
+
+    "Utilization percent of the protocol (totalBorrowUsd / totalSupplyUsd)"
+    utilization: BigDecimal!
+    "Collateralization percent of the protocol (totalSupplyUsd / totalBorrowUsd, or 1 / utilization)"
+    collateralization: BigDecimal!
+
+    "Average base supply APR of the protocol (average over all markets)"
+    avgSupplyApr: BigDecimal!
+    "Average base borrow APR of the protocol (average over all markets)"
+    avgBorrowApr: BigDecimal!
+    "Average reward supply APR of the protocol (average over all markets)"
+    avgRewardSupplyApr: BigDecimal!
+    "Average reward borrow APR of the protocol (average over all markets)"
+    avgRewardBorrowApr: BigDecimal!
+    "Average net supply APR of the protocol (avgSupplyApr + avgRewardSupplyApy)"
+    avgNetSupplyApr: BigDecimal!
+    "Average net borrow APR of the protocol (avgBorrowApr - avgRewardBorrowApr)"
+    avgNetBorrowApr: BigDecimal!
+}
+
+type MarketAccounting @entity {
+    "Market ID + hour number for snapshots"
+    id: Bytes!
+    "Market the accounting is for"
+    market: Market!
+
+    "Last block the accounting was updated"
+    lastAccountingUpdatedBlockNumber: BigInt!
+
+    "Base supply index, this tracks protocol supply interest and monotonically increases"
+    baseSupplyIndex: BigInt!
+    "Base supply index, this tracks protocol borrow borrow and monotonically increases"
+    baseBorrowIndex: BigInt!
+    "Tracking supply index for supply rewards"
+    trackingSupplyIndex: BigInt!
+    "Tracking borrow index for borrow rewards"
+    trackingBorrowIndex: BigInt!
+    "Last time the market accrued interest (i.e indices changed)"
+    lastAccrualTime: BigInt!
+
+    "Total base principal supplied to the market, this can be used to construct the most accurate totalSupply in the case where indices changes haven't been picked up by the subgraph (can accrue without an event)"
+    totalBasePrincipalSupply: BigInt!
+    "Total base principal borrowed from the market, this can be used to construct the most accurate totalBorrow in the case where indices changes haven't been picked up by the subgraph (can accrue without an event)"
+    totalBasePrincipalBorrow: BigInt!
+
+    "Base asset reserve balance"
+    baseReserveBalance: BigInt!
+
+    "Total amount of base supplied to the market (present value)"
+    totalBaseSupply: BigInt!
+    "Total amount of base borrowed from the market (present value)"
+    totalBaseBorrow: BigInt!
+
+    "Total amount of base supplied to the market in USD"
+    totalBaseSupplyUsd: BigDecimal!
+    "Total amount of base borrowed from the market in USD"
+    totalBaseBorrowUsd: BigDecimal!
+    "Base asset reserve balance of te market in USD"
+    baseReserveBalanceUsd: BigDecimal!
+    "Total collateral balance in USD"
+    collateralBalanceUsd: BigDecimal!
+    "Total collateral reserve balance in USD"
+    collateralReservesBalanceUsd: BigDecimal!
+    "Total reserve balance in USD (collateral + base)"
+    totalReserveBalanceUsd: BigDecimal!
+
+    "Utilization percent of the market (totalBaseBorrowUsd / totalBaseSupplyUsd)"
+    utilization: BigDecimal!
+    "Collateralization percent of the protocol (totalBaseSupplyUsd / totalBaseBorrowUsd, or 1 / utilization)"
+    collateralization: BigDecimal!
+
+    "Base supply APR of the market"
+    supplyApr: BigDecimal!
+    "Base borrow APR of the market"
+    borrowApr: BigDecimal!
+    "Reward supply APR of the market"
+    rewardSupplyApr: BigDecimal!
+    "Reward borrow APR of the market"
+    rewardBorrowApr: BigDecimal!
+    "Net supply APR of the market (supplyApr + rewardSupplyApr)"
+    netSupplyApr: BigDecimal!
+    "Net borrow APR of the market (borrowApr - rewardBorrowApr)"
+    netBorrowApr: BigDecimal!
+}
+
+type PositionAccounting @entity {
+    "Position ID or block timestamp + log index for snapshots"
+    id: Bytes!
+
+    "Last block number that this accounting was updated"
+    lastUpdatedBlockNumber: BigInt!
+
+    "Position the accounting is for"
+    position: Position!
+
+    "Base principal of this position (+ for supply, - for borrow), this can be used to construct the most accurate balance using the market indices since position balances are only updated when the principal changes (supply, borrow, etc)"
+    basePrincipal: BigInt!
+    "Base balance of the position (from the last time it was updated, use basePrincipal and market indices for most accurate baseBalance)"
+    baseBalance: BigInt!
+    "Base tracking index for rewards for the position"
+    baseTrackingIndex: BigInt!
+    "Base tracking that this position has accrued"
+    baseTrackingAccrued: BigInt!
+
+    "Base balance in USD (+ for supply, - for borrow)"
+    baseBalanceUsd: BigDecimal!
+    "Collateral balance of the position in USD"
+    collateralBalanceUsd: BigDecimal!
+}
+
+####
+# Usage
+####
+
+type Usage @entity {
+    "Name + time qualifier (ex: PROTOCOL_HOUR + hour)"
+    id: Bytes!
+
+    "Protocol the usage is for"
+    protocol: Protocol!
+
+    "Number of unique users"
+    uniqueUsersCount: BigInt!
+    "Number of transactions"
+    transactionCount: BigInt!
+    "Number of base supply interactions"
+    supplyBaseCount: BigInt!
+    "Number of base withdraw interactions"
+    withdrawBaseCount: BigInt!
+    "Number of liquidation interactions"
+    liquidationCount: BigInt!
+    "Number of supply collateral interactions"
+    supplyCollateralCount: BigInt!
+    "Number of withdraw collateral interactions"
+    withdrawCollateralCount: BigInt!
+    "Number of transfer collateral interactions"
+    transferCollateralCount: BigInt!
+}
+
+####
+# Historical Snapshots
+####
+
+type HourlyProtocolAccounting @entity {
+    "Hour"
+    id: Bytes!
+    "Hours since unix epoch"
+    hour: BigInt!
+    "Seconds since unix epoch"
+    timestamp: BigInt!
+    "Protocol the accounting is for"
+    protocol: Protocol!
+    "Accounting snapshot"
     accounting: ProtocolAccounting!
 }
 
 type DailyProtocolAccounting @entity {
+    "Day"
     id: Bytes!
+    "Days since unix epoch"
     day: BigInt!
+    "Seconds since unix epoch"
+    timestamp: BigInt!
+    "Protocol the accounting is for"
     protocol: Protocol!
+    "Accounting snapshot"
     accounting: ProtocolAccounting!
 }
 
 type WeeklyProtocolAccounting @entity {
+    "Week"
     id: Bytes!
+    "Week since unix epoch"
     week: BigInt!
+    "Seconds since unix epoch"
+    timestamp: BigInt!
+    "Protocol the accounting if for"
     protocol: Protocol!
+    "Accounting snapshot"
     accounting: ProtocolAccounting!
+}
+
+type MarketConfigurationSnapshot @entity {
+    "Block number + log index. Note config snapshots are only taken when config changes, not periodically"
+    id: Bytes!
+    "Timestamp in seconds since unix epoch"
+    timestamp: BigInt!
+    "Market the config is for"
+    market: Market!
+    "Configuration snapshot"
+    configuration: MarketConfiguration!
+}
+
+type HourlyMarketAccounting @entity {
+    "Market ID + hour"
+    id: Bytes!
+    "Hours since unix epoch"
+    hour: BigInt!
+    "Seconds since unix epoch"
+    timestamp: BigInt!
+    "Market the accounting if for"
+    market: Market!
+    "Accounting snapshot"
+    accounting: MarketAccounting!
+}
+
+type DailyMarketAccounting @entity {
+    "Market ID + day"
+    id: Bytes!
+    "Days since unix epoch"
+    day: BigInt!
+    "Seconds since unix epoch"
+    timestamp: BigInt!
+    "Market the accounting is for"
+    market: Market!
+    "Accounting snapshot"
+    accounting: MarketAccounting!
+}
+
+type WeeklyMarketAccounting @entity {
+    "Market ID + week"
+    id: Bytes!
+    "Weeks since unix epoch"
+    week: BigInt!
+    "Seconds since unix epoch"
+    timestamp: BigInt!
+    "Market the accounting if for"
+    market: Market!
+    "Accounting snapshot"
+    accounting: MarketAccounting!
+}
+
+type PositionAccountingSnapshot @entity {
+    "Position ID + block number + log index. Note that position snapshots are only taken when the position changes (supply, borrow, liquidate, etc.), not periodically"
+    id: Bytes!
+    "Timestamp in seconds since unix epoch"
+    timestamp: BigInt!
+    "Position the accounting is for"
+    position: Position!
+    "Accounting snapshot"
+    accounting: PositionAccounting!
+}
+
+type ProtocolHourlyUsage @entity {
+    "Hour"
+    id: Bytes!
+    "Hours since unix epoch"
+    hour: BigInt!
+    "Seconds since unix epoch"
+    timestamp: BigInt!
+    "Protocol the usage is for"
+    protocol: Protocol!
+    "Usage snapshot from that hour"
+    usage: Usage!
+}
+
+type ProtocolDailyUsage @entity {
+    "Day"
+    id: Bytes!
+    "Days since unix epoch"
+    day: BigInt!
+    "Seconds since unix epoch"
+    timestamp: BigInt!
+    "Protocol the usage is for"
+    protocol: Protocol!
+    "Usage snapshot from that day"
+    usage: Usage!
+}
+
+type MarketHourlyUsage @entity {
+    "Market ID + hour"
+    id: Bytes!
+    "Hours since unix epoch"
+    hour: BigInt!
+    "Seconds since unix epoch"
+    timestamp: BigInt!
+    "Market the usage is for"
+    market: Market!
+    "Usage snapshot from that hour"
+    usage: Usage!
+}
+
+type MarketDailyUsage @entity {
+    "Market ID + day"
+    id: Bytes!
+    "Days since unix epoch"
+    day: BigInt!
+    "Seconds since unix epoch"
+    timestamp: BigInt!
+    "Market the usage is for"
+    market: Market!
+    "Usage snapshot from that day"
+    usage: Usage!
 }
 
 ####
@@ -78,16 +531,20 @@ type WeeklyProtocolAccounting @entity {
 ####
 
 type Token @entity {
-    "Address"
+    "Token address"
     id: Bytes!
-
+    "Token address"
     address: Bytes!
+    "Token name"
     name: String!
+    "Token symbol"
     symbol: String!
+    "Token decimals"
     decimals: Int
 
-    # Price
+    "Last token price in USD"
     lastPriceUsd: BigDecimal!
+    "Block of the last token price update"
     lastPriceBlockNumber: BigInt!
 }
 
@@ -95,16 +552,21 @@ type BaseToken @entity {
     "market ID + token ID"
     id: Bytes!
 
+    "Block the base token was created"
     creationBlockNumber: BigInt!
+    "Market the base token belongs to"
     market: Market!
+    "Actual token"
     token: Token!
 
-    # Config
+    "Last block that the base token config was updated"
     lastConfigUpdateBlockNumber: BigInt!
+    "Price feed for the base token"
     priceFeed: Bytes!
 
-    # Price
+    "Last token price in USD from the priceFeed"
     lastPriceUsd: BigDecimal!
+    "Block of the last token price update"
     lastPriceBlockNumber: BigInt!
 }
 
@@ -112,12 +574,16 @@ type CollateralToken @entity {
     "Market ID + token ID + 'Col'"
     id: Bytes!
 
+    "Block the collateral token was created"
     creationBlockNumber: BigInt!
+    "Market the collateral token belongs to"
     market: Market!
+    "Actual token"
     token: Token!
 
-    # Config
+    "Last block the collateral token config was updated"
     lastConfigUpdateBlockNumber: BigInt!
+    "Price feed for the collateral token"
     priceFeed: Bytes!
     "Percent of collateral that can be borrowed against"
     borrowCollateralFactor: BigDecimal!
@@ -128,8 +594,9 @@ type CollateralToken @entity {
     "Max amount that can be supplied to protect the protocol against over exposure"
     supplyCap: BigInt!
 
-    # Price
+    "Last token price in USD from the priceFeed"
     lastPriceUsd: BigDecimal!
+    "Block of the last token price"
     lastPriceBlockNumber: BigInt!
 }
 
@@ -142,214 +609,47 @@ interface CollateralBalance {
     creationBlockNumber: BigInt!
     collateralToken: CollateralToken!
 
-    # Balance
     lastUpdateBlockNumber: BigInt!
     balance: BigInt!
 }
 
 type MarketCollateralBalance implements CollateralBalance @entity {
-    "Market id + collateral address + 'BAL'"
+    "Collateral token ID + 'BAL'"
     id: Bytes!
+    "Block number when this balance was created"
     creationBlockNumber: BigInt!
+    "Collateral token the balance is for"
     collateralToken: CollateralToken!
-
-    "Market collateral is for"
+    "Market balance is for"
     market: Market!
 
-    # Balances
+    "Last block number the balances and reserves were updated"
     lastUpdateBlockNumber: BigInt!
+    "Balance of collateralToken"
     balance: BigInt!
+    "Reserves of the collateral token"
     reserves: BigInt!
 
-    # USD values
+    "Balance in USD of the collateral token"
     balanceUsd: BigDecimal!
+    "Reserves in USD of the collateral token"
     reservesUsd: BigDecimal!
 }
 
 type PositionCollateralBalance implements CollateralBalance @entity {
-    "Position id + collateral address"
+    "Position id + collateral token ID"
     id: Bytes!
+    "Block number the position collateral balance was created"
     creationBlockNumber: BigInt!
+    "Collateral token the balance is for"
     collateralToken: CollateralToken!
-
-    "Position collateral is for"
+    "Position balance is for"
     position: Position!
 
-    # Balance
+    "Last block number the balances and reserves were updated"
     lastUpdateBlockNumber: BigInt!
+    "Balance of collateralToken"
     balance: BigInt!
-}
-
-####
-# Market
-####
-
-type MarketConfiguration @entity {
-    "Name + time qualifier"
-    id: Bytes!
-    market: Market!
-
-    cometImplementation: Bytes
-
-    lastConfigurationUpdateBlockNumber: BigInt!
-    name: String!
-    symbol: String!
-    factory: Bytes!
-    governor: Bytes!
-    pauseGuardian: Bytes!
-    extensionDelegate: Bytes!
-
-    supplyKink: BigDecimal!
-    supplyPerSecondInterestRateSlopeLow: BigInt!
-    supplyPerSecondInterestRateSlopeHigh: BigInt!
-    supplyPerSecondInterestRateBase: BigInt!
-
-    borrowKink: BigDecimal!
-    borrowPerSecondInterestRateSlopeLow: BigInt!
-    borrowPerSecondInterestRateSlopeHigh: BigInt!
-    borrowPerSecondInterestRateBase: BigInt!
-
-    storeFrontPriceFactor: BigInt!
-    trackingIndexScale: BigInt!
-
-    baseTrackingSupplySpeed: BigInt!
-    baseTrackingBorrowSpeed: BigInt!
-    baseMinForRewards: BigInt!
-    baseBorrowMin: BigInt!
-    targetReserves: BigInt!
-
-    baseToken: BaseToken!
-    collateralTokens: [CollateralToken!]!
-}
-
-# Snapshot is taken whenever any configuration changes
-type MarketConfigurationSnapshot @entity {
-    "Timestamp of config change"
-    id: Bytes!
-    timestamp: BigInt!
-    market: Market!
-    configuration: MarketConfiguration!
-}
-
-type MarketAccounting @entity {
-    "Name + time qualifier qualifier"
-    id: Bytes!
-    market: Market!
-
-    lastAccountingUpdatedBlockNumber: BigInt!
-
-    baseSupplyIndex: BigInt!
-    baseBorrowIndex: BigInt!
-    trackingSupplyIndex: BigInt!
-    trackingBorrowIndex: BigInt!
-    lastAccrualTime: BigInt!
-
-    totalBasePrincipalSupply: BigInt!
-    totalBasePrincipalBorrow: BigInt!
-
-    baseReserveBalance: BigInt!
-
-    "Total amount of base supplied to the market in present value"
-    totalBaseSupply: BigInt!
-    "Total amount of base borrowed from the market in present value"
-    totalBaseBorrow: BigInt!
-    "Percent usage of the market, that is totalBaseBorrow / totalBaseSupply"
-    utilization: BigDecimal!
-    supplyApr: BigDecimal!
-    borrowApr: BigDecimal!
-
-    # USD values
-    totalBaseSupplyUsd: BigDecimal!
-    totalBaseBorrowUsd: BigDecimal!
-    baseReserveBalanceUsd: BigDecimal!
-    collateralBalanceUsd: BigDecimal!
-    collateralReservesBalanceUsd: BigDecimal!
-    totalReserveBalanceUsd: BigDecimal!
-
-    # APR's
-    rewardSupplyApr: BigDecimal!
-    rewardBorrowApr: BigDecimal!
-
-    netSupplyApr: BigDecimal!
-    netBorrowApr: BigDecimal!
-
-    collateralization: BigDecimal!
-}
-
-type HourlyMarketAccounting @entity {
-    "hour since unix epoche"
-    id: Bytes!
-    hour: BigInt!
-    market: Market!
-    accounting: MarketAccounting!
-}
-
-type DailyMarketAccounting @entity {
-    "Day since unix epoche"
-    id: Bytes!
-    day: BigInt!
-    market: Market!
-    accounting: MarketAccounting!
-}
-
-type WeeklyMarketAccounting @entity {
-    "Weeks since unix epoche"
-    id: Bytes!
-    week: BigInt!
-    market: Market!
-    accounting: MarketAccounting!
-}
-
-type Market @entity {
-    ####
-    # On creation only
-    ####
-    "Comet proxy address"
-    id: Bytes!
-    "Comet proxy address"
-    cometProxy: Bytes!
-    "Protocol this market is part of"
-    protocol: Protocol!
-    "Block number the market was created"
-    creationBlockNumber: BigInt!
-
-    ####
-    # Configuration
-    ####
-    configuration: MarketConfiguration!
-
-    ####
-    # Accounting
-    ####
-    accounting: MarketAccounting!
-
-    ####
-    # Usage
-    ####
-    cumulativeUsage: Usage!
-
-    ####
-    # Derived
-    ####
-    collateralBalances: [MarketCollateralBalance!]! @derivedFrom(field: "market")
-    positions: [Position!]! @derivedFrom(field: "market")
-
-    supplyBaseInteractions: [SupplyBaseInteraction!]! @derivedFrom(field: "market")
-    withdrawBaseInteractions: [WithdrawBaseInteraction!]! @derivedFrom(field: "market")
-    absorbDebtInteractions: [AbsorbDebtInteraction!]! @derivedFrom(field: "market")
-    supplyCollateralInteractions: [SupplyCollateralInteraction!]! @derivedFrom(field: "market")
-    withdrawCollateralInteractions: [WithdrawCollateralInteraction!]! @derivedFrom(field: "market")
-    transferCollateralInteractions: [TransferCollateralInteraction!]! @derivedFrom(field: "market")
-    absorbCollateralInteractions: [AbsorbCollateralInteraction!]! @derivedFrom(field: "market")
-
-    hourlyUsage: [MarketHourlyUsage!]! @derivedFrom(field: "market")
-    dailyUsage: [MarketDailyUsage!]! @derivedFrom(field: "market")
-
-    configurationSnapshots: [MarketConfigurationSnapshot!]! @derivedFrom(field: "market")
-
-    hourlyMarketAccounting: [HourlyMarketAccounting!]! @derivedFrom(field: "market")
-    dailyMarketAccounting: [DailyMarketAccounting!]! @derivedFrom(field: "market")
-    weeklyMarketAccounting: [WeeklyMarketAccounting!]! @derivedFrom(field: "market")
 }
 
 ####
@@ -360,132 +660,22 @@ type Account @entity {
     "Address"
     id: Bytes!
 
+    "Block number this account was created"
     creationBlockNumber: BigInt!
+    "Address of the account"
     address: Bytes!
 
     ####
     # Derived
     ####
+    "All positions of the account"
     positions: [Position!]! @derivedFrom(field: "account")
+    "All reward claim interactions of the account"
     rewardsClaimed: [ClaimRewardsInteraction!]! @derivedFrom(field: "account")
 }
 
-####
-# Position
-####
-
-type PositionAccounting @entity {
-    "Market + Account + Name + time qualifier"
-    id: Bytes!
-
-    position: Position!
-
-    lastUpdatedBlockNumber: BigInt!
-    basePrincipal: BigInt!
-    baseBalance: BigInt!
-    baseTrackingIndex: BigInt!
-    baseTrackingAccrued: BigInt!
-
-    baseBalanceUsd: BigDecimal!
-    collateralBalanceUsd: BigDecimal!
-}
-
-type PositionAccountingSnapshot @entity {
-    "Timestamp + log index"
-    id: Bytes!
-
-    position: Position!
-    timestamp: BigInt!
-    accounting: PositionAccounting!
-}
-
-type Position @entity {
-    ####
-    # On creation only
-    ####
-    "Market proxy address + owner address"
-    id: Bytes!
-    "Block number the position was created"
-    creationBlockNumber: BigInt!
-    "Market the position is in"
-    market: Market!
-    "Owner of the position"
-    account: Account!
-
-    accounting: PositionAccounting!
-
-    ####
-    # Derived
-    ####
-    collateralBalances: [PositionCollateralBalance!]! @derivedFrom(field: "position")
-
-    supplyBaseInteractions: [SupplyBaseInteraction!]! @derivedFrom(field: "position")
-    withdrawBaseInteractions: [WithdrawBaseInteraction!]! @derivedFrom(field: "position")
-    absorbDebtInteractions: [AbsorbDebtInteraction!]! @derivedFrom(field: "position")
-    supplyCollateralInteractions: [SupplyCollateralInteraction!]! @derivedFrom(field: "position")
-    withdrawCollateralInteractions: [WithdrawCollateralInteraction!]! @derivedFrom(field: "position")
-    transferFromCollateralInteractions: [TransferCollateralInteraction!]! @derivedFrom(field: "fromPosition")
-    transferToCollateralInteractions: [TransferCollateralInteraction!]! @derivedFrom(field: "toPosition")
-    absorbCollateralInteractions: [AbsorbCollateralInteraction!]! @derivedFrom(field: "position")
-
-    positionAccountingSnapshots: [PositionAccountingSnapshot!] @derivedFrom(field: "position")
-}
-
-####
-# Usage
-####
-
-type Usage @entity {
-    ""
-    id: Bytes!
-
-    protocol: Protocol!
-
-    uniqueUsersCount: BigInt!
-    transactionCount: BigInt!
-    supplyBaseCount: BigInt!
-    withdrawBaseCount: BigInt!
-    liquidationCount: BigInt!
-    supplyCollateralCount: BigInt!
-    withdrawCollateralCount: BigInt!
-    transferCollateralCount: BigInt!
-}
-
-type ProtocolHourlyUsage @entity {
-    "Days since unix epoche"
-    id: Bytes!
-    protocol: Protocol!
-    hour: BigInt!
-    usage: Usage!
-}
-
-type ProtocolDailyUsage @entity {
-    "usage ID + hour since unix epoche"
-    id: Bytes!
-    protocol: Protocol!
-    day: BigInt!
-    usage: Usage!
-}
-
-type MarketHourlyUsage @entity {
-    "Days since unix epoche"
-    id: Bytes!
-    market: Market!
-    hour: BigInt!
-    usage: Usage!
-}
-
-type MarketDailyUsage @entity {
-    "usage ID + hour since unix epoche"
-    id: Bytes!
-    market: Market!
-    day: BigInt!
-    usage: Usage!
-}
-
-# Helper to track active accounts
 type _ActiveAccount @entity {
-    "Address + use case + id"
+    "Address + usecase specific metadata, this is just a helper for tracking overall usage"
     id: Bytes!
 }
 
@@ -494,166 +684,230 @@ type _ActiveAccount @entity {
 ####
 
 type Transaction @entity(immutable: true) {
-    "Event hash + Log index"
+    "Transaction hash"
     id: Bytes!
-
+    "Transaction hash"
     hash: Bytes!
-    logIndex: BigInt!
+    "Block number transaction is part of"
     blockNumber: BigInt!
+    "Timestamp of the transaction"
     timestamp: BigInt!
 
+    "Address the transaction is from"
     from: Bytes!
+    "Address the transaction is to"
     to: Bytes
 
+    "Gas limit for the transaction"
     gasLimit: BigInt!
+    "Gas price for the transaction"
     gasPrice: BigInt!
+    "Amount of gas used"
     gasUsed: BigInt
 }
 
 type SupplyBaseInteraction @entity(immutable: true) {
-    "Event hash + logIndex"
+    "Transaction ID + event log index"
     id: Bytes!
-
+    "Transaction this interaction is part of"
     transaction: Transaction!
 
+    "Market the interaction is with"
     market: Market!
+    "Market the interaction changes"
     position: Position!
+    "Supplied of funds"
     supplier: Bytes!
 
+    "Asset being supplied"
     asset: BaseToken!
+    "Amount being supplied"
     amount: BigInt!
+    "Amount being supplied in USD"
     amountUsd: BigDecimal!
 }
 
 type WithdrawBaseInteraction @entity(immutable: true) {
-    "event hash + logIndex"
+    "Transaction ID + event log index"
     id: Bytes!
-
+    "Transaction this interaction is part of"
     transaction: Transaction!
 
+    "Market the interaction is with"
     market: Market!
+    "Position the interaction is with"
     position: Position!
+    "Where the funds are being withdrawn to"
     destination: Bytes!
 
+    "Asset being withdrawn"
     asset: BaseToken!
+    "Amount being withdrawn"
     amount: BigInt!
+    "Amount being withdrawn in USD"
     amountUsd: BigDecimal!
 }
 
 type AbsorbDebtInteraction @entity(immutable: true) {
-    "event hash + logIndex"
+    "Transaction ID + event log index"
     id: Bytes!
-
+    "Transaction this interaction is part of"
     transaction: Transaction!
 
+    "Market the interaction is with"
     market: Market!
+    "Position the interaction is with"
     position: Position!
+    "Address that triggered the absorb"
     absorber: Bytes!
 
+    "Asset being absorbed by the market"
     asset: BaseToken!
+    "Amount of debt being absorbed"
     amount: BigInt!
+    "Amount of debt being absorbed in USD"
     amountUsd: BigDecimal!
 }
 
 type SupplyCollateralInteraction @entity(immutable: true) {
-    "Event hash + logIndex"
+    "Transaction ID + event log index"
     id: Bytes!
-
+    "Transaction this interaction is part of"
     transaction: Transaction!
 
+    "Market the interaction is with"
     market: Market!
+    "Position the interaction is with"
     position: Position!
+    "Supplier of the collateral"
     supplier: Bytes!
 
+    "Asset being supplied"
     asset: CollateralToken!
+    "Amount supplied"
     amount: BigInt!
+    "Amount supplied in USD"
     amountUsd: BigDecimal!
 }
 
 type WithdrawCollateralInteraction @entity(immutable: true) {
-    "Event hash + logIndex"
+    "Transaction ID + event log index"
     id: Bytes!
-
+    "Transaction this interaction is part of"
     transaction: Transaction!
 
+    "Market the interaction is with"
     market: Market!
+    "Position the interaction is with"
     position: Position!
+    "Where the assets are being withdrawn to"
     destination: Bytes!
 
+    "Asset being withdrawn"
     asset: CollateralToken!
+    "Asset being withdrawn"
     amount: BigInt!
+    "Asset being withdrawn in USD"
     amountUsd: BigDecimal!
 }
 
 type TransferCollateralInteraction @entity(immutable: true) {
-    "event hash + logIndex"
+    "Transaction ID + event log index"
     id: Bytes!
-
+    "Transaction this interaction is part of"
     transaction: Transaction!
 
+    "Market the interaction is with"
     market: Market!
+    "Position the transfer is from"
     fromPosition: Position!
+    "Position the transfer is to"
     toPosition: Position!
 
+    "Asset being transferred"
     asset: CollateralToken!
+    "Amount being transferred"
     amount: BigInt!
+    "Amount being transferred in USD"
     amountUsd: BigDecimal!
 }
 
 type AbsorbCollateralInteraction @entity(immutable: true) {
-    "Event hash + logIndex"
+    "Transaction ID + event log index"
     id: Bytes!
-
+    "Transaction this interaction is part of"
     transaction: Transaction!
 
+    "Market the interaction is with"
     market: Market!
+    "Position the interaction is with"
     position: Position!
+    "Address that triggered the collateral absorb"
     absorber: Bytes!
 
+    "Collateral asset being absorbed"
     asset: CollateralToken!
+    "Amount of collateral absorbed"
     amount: BigInt!
+    "Amount of collateral absorbed in USD"
     amountUsd: BigDecimal!
 }
 
 type BuyCollateralInteraction @entity(immutable: true) {
-    "event hash + logIndex"
+    "Transaction ID + event log index"
     id: Bytes!
-
+    "Transaction this interaction is part of"
     transaction: Transaction!
 
+    "Market the interaction is with"
     market: Market!
+    "Buyer of the collateral"
     buyer: Bytes!
 
+    "Asset being bought"
     asset: CollateralToken!
+    "Collateral amount bought"
     collateralAmount: BigInt!
+    "Base asset amount being given in exchange"
     baseAmount: BigInt!
+    "Collateral amount bought in USD"
     collateralAmountUsd: BigDecimal!
+    "Base asset amount being given in exchange in USD"
     baseAmountUsd: BigDecimal!
 }
 
 type WithdrawReservesInteraction @entity(immutable: true) {
-    "event hash + logIndex"
+    "Transaction ID + event log index"
     id: Bytes!
-
+    "Transaction this interaction is part of"
     transaction: Transaction!
 
+    "Market the interaction is with"
     market: Market!
+    "Destination of the reserves"
     destination: Bytes!
 
+    "Amount of base reserves being withdrawn"
     amount: BigInt!
+    "Amount of base reserves being withdrawn in USD"
     amountUsd: BigDecimal!
 }
 
 type ClaimRewardsInteraction @entity(immutable: true) {
-    "event hash + logIndex"
+    "Transaction ID + event log index"
     id: Bytes!
-
+    "Transaction this interaction is part of"
     transaction: Transaction!
 
+    "Account claiming the reward"
     account: Account!
+    "Destination of the reward"
     destination: Bytes!
 
+    "Reward token"
     token: Token!
+    "Amount of reward token"
     amount: BigInt!
+    "Amount of reward token in USD"
     amountUsd: BigDecimal!
 }

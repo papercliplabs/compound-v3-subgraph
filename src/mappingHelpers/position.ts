@@ -91,9 +91,9 @@ export function updatePositionAccounting(
 }
 
 function createPositionAccountingSnapshots(accounting: PositionAccounting, event: ethereum.Event): void {
-    const snapshotId = Bytes.fromByteArray(Bytes.fromBigInt(event.block.timestamp)).concat(
-        Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex))
-    );
+    const snapshotId = accounting.position
+        .concat(Bytes.fromByteArray(Bytes.fromBigInt(event.block.number)))
+        .concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
 
     // Copy existing config
     const copiedConfig = new PositionAccounting(snapshotId);

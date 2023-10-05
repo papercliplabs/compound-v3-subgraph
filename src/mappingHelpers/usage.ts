@@ -52,8 +52,9 @@ function getOrCreateProtocolHourlyUsage(hour: BigInt, event: ethereum.Event): Pr
         const protocol = getOrCreateProtocol(event);
         const usage = getOrCreateUsage(Bytes.fromUTF8("PROTOCOL_HOUR").concat(id));
 
-        hourlyUsage.protocol = protocol.id;
         hourlyUsage.hour = hour;
+        hourlyUsage.timestamp = event.block.timestamp;
+        hourlyUsage.protocol = protocol.id;
         hourlyUsage.usage = usage.id;
 
         hourlyUsage.save();
@@ -72,8 +73,9 @@ function getOrCreateProtocolDailyUsage(day: BigInt, event: ethereum.Event): Prot
         const protocol = getOrCreateProtocol(event);
         const usage = getOrCreateUsage(Bytes.fromUTF8("PROTOCOL_DAY").concat(id));
 
-        dailyUsage.protocol = protocol.id;
         dailyUsage.day = day;
+        dailyUsage.timestamp = event.block.timestamp;
+        dailyUsage.protocol = protocol.id;
         dailyUsage.usage = usage.id;
 
         dailyUsage.save();
@@ -82,7 +84,7 @@ function getOrCreateProtocolDailyUsage(day: BigInt, event: ethereum.Event): Prot
     return dailyUsage;
 }
 
-function getOrCreateMarketDailyUsage(market: Market, day: BigInt): MarketDailyUsage {
+function getOrCreateMarketDailyUsage(market: Market, day: BigInt, event: ethereum.Event): MarketDailyUsage {
     const id = market.id.concat(Bytes.fromByteArray(Bytes.fromBigInt(day)));
     let dailyUsage = MarketDailyUsage.load(id);
 
@@ -91,8 +93,9 @@ function getOrCreateMarketDailyUsage(market: Market, day: BigInt): MarketDailyUs
 
         const usage = getOrCreateUsage(id);
 
-        dailyUsage.market = market.id;
         dailyUsage.day = day;
+        dailyUsage.timestamp = event.block.timestamp;
+        dailyUsage.market = market.id;
         dailyUsage.usage = usage.id;
 
         dailyUsage.save();
@@ -101,7 +104,7 @@ function getOrCreateMarketDailyUsage(market: Market, day: BigInt): MarketDailyUs
     return dailyUsage;
 }
 
-function getOrCreateMarketHourlyUsage(market: Market, hour: BigInt): MarketHourlyUsage {
+function getOrCreateMarketHourlyUsage(market: Market, hour: BigInt, event: ethereum.Event): MarketHourlyUsage {
     const id = market.id.concat(Bytes.fromByteArray(Bytes.fromBigInt(hour)));
     let hourlyUsage = MarketHourlyUsage.load(id);
 
@@ -110,8 +113,9 @@ function getOrCreateMarketHourlyUsage(market: Market, hour: BigInt): MarketHourl
 
         const usage = getOrCreateUsage(id);
 
-        hourlyUsage.market = market.id;
         hourlyUsage.hour = hour;
+        hourlyUsage.timestamp = event.block.timestamp;
+        hourlyUsage.market = market.id;
         hourlyUsage.usage = usage.id;
 
         hourlyUsage.save();
@@ -169,8 +173,8 @@ export function updateUsageMetrics(
     const protocolHourlyUsageContainer = getOrCreateProtocolHourlyUsage(hour, event);
     const protocolDailyUsageContainer = getOrCreateProtocolDailyUsage(day, event);
 
-    const marketHourlyUsageContainer = getOrCreateMarketHourlyUsage(market, hour);
-    const marketDailyUsageContainer = getOrCreateMarketDailyUsage(market, day);
+    const marketHourlyUsageContainer = getOrCreateMarketHourlyUsage(market, hour, event);
+    const marketDailyUsageContainer = getOrCreateMarketDailyUsage(market, day, event);
 
     const protocolCumulativeUsage = getOrCreateUsage(protocol.cumulativeUsage);
     const protocolHourlyUsage = getOrCreateUsage(protocolHourlyUsageContainer.usage);
