@@ -1,5 +1,13 @@
 import { Address, Bytes, ethereum } from "@graphprotocol/graph-ts";
-import { Position, Market, Account, PositionAccounting, BaseToken, CollateralToken } from "../../generated/schema";
+import {
+    Position,
+    Market,
+    Account,
+    PositionAccounting,
+    BaseToken,
+    CollateralToken,
+    PositionAccountingSnapshot,
+} from "../../generated/schema";
 import { ZERO_BD, ZERO_BI } from "../common/constants";
 import { getOrCreateMarket, getOrCreateMarketAccounting, getOrCreateMarketConfiguration } from "./market";
 import { computeTokenValueUsd, presentValue } from "../common/utils";
@@ -98,6 +106,13 @@ function createPositionAccountingSnapshots(accounting: PositionAccounting, event
     }
 
     copiedConfig.save();
+
+    // Create snapshot
+    const positionAccountingSnapshot = new PositionAccountingSnapshot(snapshotId);
+    positionAccountingSnapshot.timestamp = event.block.timestamp;
+    positionAccountingSnapshot.position = copiedConfig.position;
+    positionAccountingSnapshot.accounting = accounting.id;
+    positionAccountingSnapshot.save();
 }
 
 ////
