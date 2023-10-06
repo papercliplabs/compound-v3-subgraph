@@ -111,7 +111,7 @@ function createPositionAccountingSnapshots(accounting: PositionAccounting, event
     const positionAccountingSnapshot = new PositionAccountingSnapshot(snapshotId);
     positionAccountingSnapshot.timestamp = event.block.timestamp;
     positionAccountingSnapshot.position = copiedConfig.position;
-    positionAccountingSnapshot.accounting = accounting.id;
+    positionAccountingSnapshot.accounting = copiedConfig.id;
     positionAccountingSnapshot.save();
 }
 
