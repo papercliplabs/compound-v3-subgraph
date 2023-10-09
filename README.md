@@ -6,7 +6,9 @@
 # Usage Notes
 
 -   All percentages are represented as decimals in [0.0, 1.0]
--   baseTransfer will not emit any events if all value changed is on the borrow side. For this reason, the subgraph will not track base transfers, as this will be incomplete anyhow. Thus, it means that positions that did baseTransfers may be out of date until they do another interaction with the market. Could add handler to Transfer that just performs update to make it "less wrong"
+-   baseTransfer will not emit any events if all value changed is on the borrow side. For this reason, it it possible that positions that did baseTransfers may be out of date until interaction happens involving that position do another interaction with the market. There is an issue open in Compound's comet repo here to add this event: https://github.com/compound-finance/comet/issues/816
+-   All interactions to the comet contract emit a specific event except for except for baseTransfer (see above^). Also, the `Transfer` event gets omitted anytime the cToken balances change, for this reason we update accounting on a Transfer event (which is generally redundant, except for the special case described above). For this reason, we don't explicitly track this interaction for usage as this would result in duplicate counting.
+-   USD balances are as of the last time an entity got updated. If there are no entity updates for a long period the "current" values will not be very accurate and should be instead constructed using the token balance and the current token price pulled from elsewhere.
 
 # Compound v3 Contract Block Diagram Overview
 
@@ -44,3 +46,17 @@ yarn build
 ```bash
 yarn deploy --access-token <access_token>
 ```
+
+# Validation
+
+See the jupyter notebook [query.ipynb](./validation/query.ipynb) for subgraph query and charting.
+
+[directContract.ts](./validation/directContract.ts) reads the compound contracts at specified block numbers to compare with the subgraph.
+
+Run directContract.ts
+
+```bash
+ts-node directContract.ts
+```
+
+Validation is summarized in [this spreadsheet](https://docs.google.com/spreadsheets/d/1LWKhGglj5AQbRJOgTfqkDOssok-QBzzifwl1gk8rxCc/edit#gid=1642772597)

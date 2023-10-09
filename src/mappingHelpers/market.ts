@@ -25,13 +25,7 @@ import {
     SECONDS_PER_YEAR,
     ZERO_BD,
 } from "../common/constants";
-import {
-    bigDecimalSafeDiv,
-    computeTokenValueUsd,
-    formatUnits,
-    getRewardConfigData,
-    presentValue,
-} from "../common/utils";
+import { bigDecimalSafeDiv, computeTokenValueUsd, formatUnits, getRewardConfigData } from "../common/utils";
 import {
     getTokenPriceUsd,
     getOrCreateBaseToken,
@@ -188,9 +182,8 @@ export function updateMarketAccounting(market: Market, accounting: MarketAccount
 
     accounting.baseReserveBalance = comet.getReserves();
 
-    // Derived
-    accounting.totalBaseSupply = presentValue(accounting.totalBasePrincipalSupply, accounting.baseSupplyIndex);
-    accounting.totalBaseBorrow = presentValue(accounting.totalBasePrincipalBorrow, accounting.baseBorrowIndex);
+    accounting.totalBaseSupply = comet.totalSupply();
+    accounting.totalBaseBorrow = comet.totalBorrow();
 
     const scaledUtilization = comet.getUtilization();
     accounting.utilization = scaledUtilization.toBigDecimal().div(COMET_FACTOR_SCALE.toBigDecimal());

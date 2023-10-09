@@ -9,6 +9,7 @@ import {
     AbsorbCollateral as AbsorbCollateralEvent,
     BuyCollateral as BuyCollateralEvent,
     WithdrawReserves as WithdrawReservesEvent,
+    Transfer as TransferEvent,
 } from "../../generated/templates/Comet/Comet";
 import {
     getOrCreateMarket,
@@ -254,6 +255,17 @@ export function handleWithdrawReserves(event: WithdrawReservesEvent): void {
 
     updateMarketAccounting(market, marketAccounting, event);
     createWithdrawReservesInteraction(market, destination, amount, event);
+
+    marketAccounting.save();
+    market.save();
+}
+
+export function handleTransfer(event: TransferEvent): void {
+    const market = getOrCreateMarket(event.address, event);
+    const marketAccounting = getOrCreateMarketAccounting(market, event);
+
+    updateMarketAccounting(market, marketAccounting, event);
+    // Don't explicitly track transfers here because they can come from all types of base interactions
 
     marketAccounting.save();
     market.save();

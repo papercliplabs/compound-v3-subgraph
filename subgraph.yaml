@@ -23,25 +23,33 @@ dataSources:
               - event: SetFactory(indexed address,indexed address,indexed address)
                 handler: handleSetFactory
           file: ./src/mappings/configurator.ts
-    # - kind: ethereum
-    #   name: CometRewards
-    #   network: mainnet
-    #   source:
-    #       address: "0x1B0e765F6224C21223AeA2af16c1C46E38885a40"
-    #       abi: CometRewards
-    #       startBlock: 15331590
-    #   mapping:
-    #       kind: ethereum/events
-    #       apiVersion: 0.0.7
-    #       language: wasm/assemblyscript
-    #       entities: []
-    #       abis:
-    #           - name: CometRewards
-    #             file: ./abis/CometRewards.json
-    #       eventHandlers:
-    #           - event: RewardClaimed(indexed address,indexed address,indexed address,uint256)
-    #             handler: handleRewardClaimed
-    #       file: ./src/mappings/cometRewards.ts
+    - kind: ethereum
+      name: CometRewards
+      network: mainnet
+      source:
+          address: "0x1B0e765F6224C21223AeA2af16c1C46E38885a40"
+          abi: CometRewards
+          startBlock: 15331590
+      mapping:
+          kind: ethereum/events
+          apiVersion: 0.0.7
+          language: wasm/assemblyscript
+          entities: []
+          abis:
+              - name: CometRewards
+                file: ./abis/CometRewardsV1.json
+              - name: CometRewards
+                file: ./abis/CometRewardsV2.json
+              - name: Erc20
+                file: ./abis/Erc20.json
+              - name: ChainlinkOracle
+                file: ./abis/ChainlinkOracle.json
+              - name: Comet
+                file: ./abis/Comet.json
+          eventHandlers:
+              - event: RewardClaimed(indexed address,indexed address,indexed address,uint256)
+                handler: handleRewardClaimed
+          file: ./src/mappings/cometRewards.ts
 templates:
     - kind: ethereum
       name: Comet
@@ -87,4 +95,6 @@ templates:
                 handler: handleBuyCollateral
               - event: WithdrawReserves(indexed address,uint256)
                 handler: handleWithdrawReserves
+              - event: Transfer(indexed address,indexed address,uint256)
+                handler: handleTransfer
           file: ./src/mappings/comet.ts

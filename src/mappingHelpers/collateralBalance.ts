@@ -1,5 +1,11 @@
 import { Address, Bytes, ethereum } from "@graphprotocol/graph-ts";
-import { CollateralToken, MarketCollateralBalance, Position, PositionCollateralBalance } from "../../generated/schema";
+import {
+    CollateralToken,
+    MarketCollateralBalance,
+    Position,
+    PositionCollateralBalance,
+    Token,
+} from "../../generated/schema";
 import { ZERO_BI } from "../common/constants";
 import { Comet as CometContract } from "../../generated/templates/Comet/Comet";
 import { getOrCreateToken, getTokenPriceUsd } from "./token";
@@ -35,14 +41,14 @@ export function getOrCreateMarketCollateralBalance(
 export function updateMarketCollateralBalance(collateralBalance: MarketCollateralBalance, event: ethereum.Event): void {
     const comet = CometContract.bind(Address.fromBytes(collateralBalance.market));
     const collateralToken = CollateralToken.load(collateralBalance.collateralToken)!; // Guaranteed to exist
+    const collateralTokenToken = getOrCreateToken(Address.fromBytes(collateralToken.token), event);
     const totalsCollateral = comet.totalsCollateral(Address.fromBytes(collateralToken.token));
 
     collateralBalance.lastUpdateBlockNumber = event.block.number;
     collateralBalance.balance = totalsCollateral.getTotalSupplyAsset();
-    collateralBalance.reserves = ZERO_BI;
 
-    // TODO: this is reverting!
-    // collateralBalance.reserves = comet.getCollateralReserves(Address.fromBytes(CollateralToken.address));
+    const tryGetReserves = comet.try_getCollateralReserves(Address.fromBytes(collateralTokenToken.address));
+    collateralBalance.reserves = tryGetReserves.reverted ? ZERO_BI : tryGetReserves.value;
 }
 
 // Update just the USD value of balance based on newest price and existing balance
