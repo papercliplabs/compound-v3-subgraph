@@ -49,12 +49,12 @@ export function updateProtocolAccounting(
     let collateralBalanceUsd = ZERO_BD;
     let collateralReserversBalanceUsd = ZERO_BD;
     let totalReserveBalanceUsd = ZERO_BD;
-    let sumSupplyApr = ZERO_BD;
-    let sumBorrowApr = ZERO_BD;
-    let sumRewardSupplyApr = ZERO_BD;
-    let sumRewardBorrowApr = ZERO_BD;
-    let sumNetSupplyApr = ZERO_BD;
-    let sumNetBorrowApr = ZERO_BD;
+    let weightedSumSupplyApr = ZERO_BD;
+    let weightedSumBorrowApr = ZERO_BD;
+    let weightedSumRewardSupplyApr = ZERO_BD;
+    let weightedSumRewardBorrowApr = ZERO_BD;
+    let weightedSumNetSupplyApr = ZERO_BD;
+    let weightedSumNetBorrowApr = ZERO_BD;
 
     const marketIds = protocol.markets;
     const numMarkets = marketIds.length;
@@ -70,12 +70,24 @@ export function updateProtocolAccounting(
             marketAccounting.collateralReservesBalanceUsd
         );
         totalReserveBalanceUsd = totalReserveBalanceUsd.plus(marketAccounting.totalReserveBalanceUsd);
-        sumSupplyApr = sumSupplyApr.plus(marketAccounting.supplyApr);
-        sumBorrowApr = sumBorrowApr.plus(marketAccounting.borrowApr);
-        sumRewardSupplyApr = sumRewardSupplyApr.plus(marketAccounting.rewardSupplyApr);
-        sumRewardBorrowApr = sumRewardBorrowApr.plus(marketAccounting.rewardBorrowApr);
-        sumNetSupplyApr = sumNetSupplyApr.plus(marketAccounting.netSupplyApr);
-        sumNetBorrowApr = sumNetBorrowApr.plus(marketAccounting.netBorrowApr);
+        weightedSumSupplyApr = weightedSumSupplyApr.plus(
+            marketAccounting.supplyApr.times(marketAccounting.totalBaseSupplyUsd)
+        );
+        weightedSumBorrowApr = weightedSumBorrowApr.plus(
+            marketAccounting.borrowApr.times(marketAccounting.totalBaseBorrowUsd)
+        );
+        weightedSumRewardSupplyApr = weightedSumRewardSupplyApr.plus(
+            marketAccounting.rewardSupplyApr.times(marketAccounting.totalBaseSupplyUsd)
+        );
+        weightedSumRewardBorrowApr = weightedSumRewardBorrowApr.plus(
+            marketAccounting.rewardBorrowApr.times(marketAccounting.totalBaseBorrowUsd)
+        );
+        weightedSumNetSupplyApr = weightedSumNetSupplyApr.plus(
+            marketAccounting.netSupplyApr.times(marketAccounting.totalBaseSupplyUsd)
+        );
+        weightedSumNetBorrowApr = weightedSumNetBorrowApr.plus(
+            marketAccounting.netBorrowApr.times(marketAccounting.totalBaseBorrowUsd)
+        );
     }
 
     accounting.lastUpdatedBlock = event.block.number;
@@ -87,12 +99,12 @@ export function updateProtocolAccounting(
     accounting.collateralReservesBalanceUsd = collateralReserversBalanceUsd;
     accounting.totalReserveBalanceUsd = totalReserveBalanceUsd;
     accounting.utilization = bigDecimalSafeDiv(accounting.totalBorrowUsd, accounting.totalSupplyUsd);
-    accounting.avgSupplyApr = bigDecimalSafeDiv(sumSupplyApr, BigDecimal.fromString(numMarkets.toString()));
-    accounting.avgBorrowApr = bigDecimalSafeDiv(sumBorrowApr, BigDecimal.fromString(numMarkets.toString()));
-    accounting.avgRewardSupplyApr = bigDecimalSafeDiv(sumRewardSupplyApr, BigDecimal.fromString(numMarkets.toString()));
-    accounting.avgRewardBorrowApr = bigDecimalSafeDiv(sumRewardBorrowApr, BigDecimal.fromString(numMarkets.toString()));
-    accounting.avgNetSupplyApr = bigDecimalSafeDiv(sumNetSupplyApr, BigDecimal.fromString(numMarkets.toString()));
-    accounting.avgNetBorrowApr = bigDecimalSafeDiv(sumNetBorrowApr, BigDecimal.fromString(numMarkets.toString()));
+    accounting.avgSupplyApr = bigDecimalSafeDiv(weightedSumSupplyApr, accounting.totalSupplyUsd);
+    accounting.avgBorrowApr = bigDecimalSafeDiv(weightedSumBorrowApr, accounting.totalBorrowUsd);
+    accounting.avgRewardSupplyApr = bigDecimalSafeDiv(weightedSumRewardSupplyApr, accounting.totalSupplyUsd);
+    accounting.avgRewardBorrowApr = bigDecimalSafeDiv(weightedSumRewardBorrowApr, accounting.totalBorrowUsd);
+    accounting.avgNetSupplyApr = bigDecimalSafeDiv(weightedSumNetSupplyApr, accounting.totalSupplyUsd);
+    accounting.avgNetBorrowApr = bigDecimalSafeDiv(weightedSumNetBorrowApr, accounting.totalBorrowUsd);
     accounting.collateralization = bigDecimalSafeDiv(accounting.totalSupplyUsd, accounting.totalBorrowUsd);
     accounting.save();
 

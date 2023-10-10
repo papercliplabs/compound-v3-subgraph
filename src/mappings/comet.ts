@@ -137,6 +137,7 @@ export function handleSupplyCollateral(event: SupplyCollateralEvent): void {
     const marketAccounting = getOrCreateMarketAccounting(market, event);
     const account = getOrCreateAccount(ownerAddress, event);
     const position = getOrCreatePosition(market, account, event);
+    const positionAccounting = getOrCreatePositionAccounting(position, event);
     const token = getOrCreateToken(assetAddress, event);
     const collateralToken = getOrCreateCollateralToken(market, token, event);
 
@@ -145,6 +146,9 @@ export function handleSupplyCollateral(event: SupplyCollateralEvent): void {
 
     updateMarketCollateralBalance(marketCollateralBalance, event);
     updatePositionCollateralBalance(position, positionCollateralBalance, event);
+
+    updateMarketAccounting(market, marketAccounting, event);
+    updatePositionAccounting(position, positionAccounting, event);
 
     createSupplyCollateralInteraction(market, position, supplier, collateralToken, amount, event);
     updateUsageMetrics(account, market, TransactionType.SUPPLY_COLLATERAL, event);
@@ -160,8 +164,10 @@ export function handleWithdrawCollateral(event: WithdrawCollateralEvent): void {
     const assetAddress = event.params.asset;
 
     const market = getOrCreateMarket(event.address, event);
+    const marketAccounting = getOrCreateMarketAccounting(market, event);
     const account = getOrCreateAccount(ownerAddress, event);
     const position = getOrCreatePosition(market, account, event);
+    const positionAccounting = getOrCreatePositionAccounting(position, event);
     const token = getOrCreateToken(assetAddress, event);
     const collateralToken = getOrCreateCollateralToken(market, token, event);
 
@@ -174,6 +180,9 @@ export function handleWithdrawCollateral(event: WithdrawCollateralEvent): void {
     createWithdrawCollateralInteraction(market, position, destination, collateralToken, amount.neg(), event);
     updateUsageMetrics(account, market, TransactionType.WITHDRAW_COLLATERAL, event);
 
+    updateMarketAccounting(market, marketAccounting, event);
+    updatePositionAccounting(position, positionAccounting, event);
+
     marketCollateralBalance.save();
     positionCollateralBalance.save();
 }
@@ -185,12 +194,15 @@ export function handleTransferCollateral(event: TransferCollateralEvent): void {
     const amount = event.params.amount;
 
     const market = getOrCreateMarket(event.address, event);
+    const marketAccounting = getOrCreateMarketAccounting(market, event);
     const fromAccount = getOrCreateAccount(from, event);
     const toAccount = getOrCreateAccount(to, event);
     const token = getOrCreateToken(assetAddress, event);
     const collateralToken = getOrCreateCollateralToken(market, token, event);
     const fromPosition = getOrCreatePosition(market, fromAccount, event);
+    const fromPositionAccounting = getOrCreatePositionAccounting(fromPosition, event);
     const toPosition = getOrCreatePosition(market, toAccount, event);
+    const toPositionAccounting = getOrCreatePositionAccounting(toPosition, event);
 
     const fromPositionCollateralBalance = getOrCreatePositionCollateralBalance(collateralToken, fromPosition, event);
     const toPositionCollateralBalance = getOrCreatePositionCollateralBalance(collateralToken, toPosition, event);
@@ -200,6 +212,10 @@ export function handleTransferCollateral(event: TransferCollateralEvent): void {
 
     createTransferCollateralInteraction(market, fromPosition, toPosition, collateralToken, amount, event);
     updateUsageMetrics(fromAccount, market, TransactionType.TRANSFER_COLLATERAL, event);
+
+    updateMarketAccounting(market, marketAccounting, event);
+    updatePositionAccounting(fromPosition, fromPositionAccounting, event);
+    updatePositionAccounting(toPosition, toPositionAccounting, event);
 
     fromPositionCollateralBalance.save();
     toPositionCollateralBalance.save();
@@ -212,8 +228,10 @@ export function handleAbsorbCollateral(event: AbsorbCollateralEvent): void {
     const amount = event.params.collateralAbsorbed;
 
     const market = getOrCreateMarket(event.address, event);
+    const marketAccounting = getOrCreateMarketAccounting(market, event);
     const account = getOrCreateAccount(ownerAddress, event);
     const position = getOrCreatePosition(market, account, event);
+    const positionAccounting = getOrCreatePositionAccounting(position, event);
     const token = getOrCreateToken(assetAddress, event);
     const collateralToken = getOrCreateCollateralToken(market, token, event);
 
@@ -224,6 +242,9 @@ export function handleAbsorbCollateral(event: AbsorbCollateralEvent): void {
     updatePositionCollateralBalance(position, positionCollateralBalance, event);
 
     createAbsorbCollateralInteraction(market, position, absorber, collateralToken, amount, event);
+
+    updateMarketAccounting(market, marketAccounting, event);
+    updatePositionAccounting(position, positionAccounting, event);
 
     positionCollateralBalance.save();
     marketCollateralBalance.save();
@@ -265,7 +286,7 @@ export function handleTransfer(event: TransferEvent): void {
     const marketAccounting = getOrCreateMarketAccounting(market, event);
 
     updateMarketAccounting(market, marketAccounting, event);
-    // Don't explicitly track transfers here because they can come from all types of base interactions
+    // Don't track transfers for usage because they can come from all types of base interactions
 
     marketAccounting.save();
     market.save();

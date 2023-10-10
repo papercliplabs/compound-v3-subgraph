@@ -62,20 +62,75 @@ async function multiReadContract(
     });
 }
 
-// multiReadContract(COMET_ADDRESS, cometAbi as Abi, getNoInputViewFunctions(cometAbi as Abi), null, READ_BLOCK);
+async function marketCollateralInfo(cometAddress: Address, collateralAddress: Address, blockNumber: bigint) {
+    const functionNames = ["getAssetInfoByAddress", "totalsCollateral", "getCollateralReserves"];
+    console.log("COLLATERAL INFO - ", collateralAddress);
+    for (let fnName of functionNames) {
+        const res = await client.readContract({
+            address: cometAddress,
+            abi: cometAbi,
+            functionName: fnName,
+            args: [collateralAddress],
+            blockNumber: blockNumber,
+        });
 
-async function test() {
-    const res = await client.readContract({
-        address: COMET_ADDRESS,
+        console.log(fnName, res);
+    }
+}
+
+async function getPositionInfo(cometAddress: Address, accountAddress: Address, blockNumber: bigint) {
+    const basicRes = await client.readContract({
+        address: cometAddress,
         abi: cometAbi,
-        // functionName: "getAssetInfoByAddress",
-        // functionName: "totalsCollateral",
-        functionName: "getCollateralReserves",
-        // args: ["0xbe9895146f7af43049ca1c1ae358b0541ea49704"],
-        args: ["0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"],
-        blockNumber: BigInt(18315072),
+        functionName: "userBasic",
+        args: [accountAddress],
+        blockNumber: blockNumber,
     });
 
-    console.log(res);
+    console.log("Principal: ", (basicRes as Array<any>)[0]);
+    console.log("baseTrackingIndex: ", (basicRes as Array<any>)[1]);
+    console.log("baseTrackingAccured: ", (basicRes as Array<any>)[2]);
+
+    const numAssets = (await client.readContract({
+        address: cometAddress,
+        abi: cometAbi,
+        functionName: "numAssets",
+        blockNumber: blockNumber,
+    })) as number;
+
+    for (let i = 0; i < numAssets; i++) {
+        const assetInfo = await client.readContract({
+            address: cometAddress,
+            abi: cometAbi,
+            functionName: "getAssetInfo",
+            args: [i],
+            blockNumber: blockNumber,
+        });
+
+        const colAddress = (assetInfo as any)["asset"] as Address;
+
+        const colRes = await client.readContract({
+            address: cometAddress,
+            abi: cometAbi,
+            functionName: "userCollateral",
+            args: [accountAddress, colAddress],
+            blockNumber: blockNumber,
+        });
+
+        console.log("Col bal - ", colAddress, ": ", (colRes as Array<any>)[0]);
+    }
 }
-test();
+
+async function main() {
+    // await multiReadContract(COMET_ADDRESS, cometAbi as Abi, getNoInputViewFunctions(cometAbi as Abi), null, READ_BLOCK);
+    // console.log("\n\n\n");
+    // await marketCollateralInfo(COMET_ADDRESS, "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599", BigInt(18315072));
+    // console.log("\n\n\n");
+    await getPositionInfo(
+        "0xa17581a9e3356d9a858b789d68b4d866e593ae94",
+        "0x73f3869e754a0a9df4bb33bad248c0182dda5175",
+        BigInt(17367807)
+    );
+}
+
+main();
