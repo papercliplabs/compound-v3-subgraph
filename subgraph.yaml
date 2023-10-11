@@ -1,100 +1,103 @@
 specVersion: 0.0.5
 schema:
-    file: ./schema.graphql
+  file: ./schema.graphql
 dataSources:
-    - kind: ethereum
-      name: Configurator
-      network: mainnet
-      source:
-          address: "0x316f9708bB98af7dA9c68C1C3b5e79039cD336E3"
-          abi: Configurator
-          startBlock: 15331590
-      mapping:
-          kind: ethereum/events
-          apiVersion: 0.0.7
-          language: wasm/assemblyscript
-          entities: []
-          abis:
-              - name: Configurator
-                file: ./abis/Configurator.json
-          eventHandlers:
-              - event: Upgraded(indexed address)
-                handler: handleUpgraded
-              - event: SetFactory(indexed address,indexed address,indexed address)
-                handler: handleSetFactory
-          file: ./src/mappings/configurator.ts
-    - kind: ethereum
-      name: CometRewards
-      network: mainnet
-      source:
-          address: "0x1B0e765F6224C21223AeA2af16c1C46E38885a40"
-          abi: CometRewards
-          startBlock: 15331590
-      mapping:
-          kind: ethereum/events
-          apiVersion: 0.0.7
-          language: wasm/assemblyscript
-          entities: []
-          abis:
-              - name: CometRewards
-                file: ./abis/CometRewardsV1.json
-              - name: CometRewards
-                file: ./abis/CometRewardsV2.json
-              - name: Erc20
-                file: ./abis/Erc20.json
-              - name: ChainlinkOracle
-                file: ./abis/ChainlinkOracle.json
-              - name: Comet
-                file: ./abis/Comet.json
-          eventHandlers:
-              - event: RewardClaimed(indexed address,indexed address,indexed address,uint256)
-                handler: handleRewardClaimed
-          file: ./src/mappings/cometRewards.ts
+  - kind: ethereum
+    name: Configurator
+    network: arbitrum-one
+    source:
+      abi: Configurator
+      address: "0xb21b06D71c75973babdE35b49fFDAc3F82Ad3775"
+      startBlock: 87335242
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities: []
+      abis:
+        - name: Configurator
+          file: ./abis/Configurator.json
+      eventHandlers:
+        - event: Upgraded(indexed address)
+          handler: handleUpgraded
+        - event: SetFactory(indexed address,indexed address,indexed address)
+          handler: handleSetFactory
+      file: ./src/mappings/configurator.ts
+  - kind: ethereum
+    name: CometRewards
+    network: arbitrum-one
+    source:
+      abi: CometRewards
+      address: "0x88730d254A2f7e6AC8388c3198aFd694bA9f7fae"
+      startBlock: 87335242
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities: []
+      abis:
+        - name: CometRewards
+          file: ./abis/CometRewardsV1.json
+        - name: CometRewards
+          file: ./abis/CometRewardsV2.json
+        - name: Erc20
+          file: ./abis/Erc20.json
+        - name: ChainlinkOracle
+          file: ./abis/ChainlinkOracle.json
+        - name: Comet
+          file: ./abis/Comet.json
+      eventHandlers:
+        - event: RewardClaimed(indexed address,indexed address,indexed address,uint256)
+          handler: handleRewardClaimed
+      file: ./src/mappings/cometRewards.ts
 templates:
-    - kind: ethereum
-      name: Comet
-      network: mainnet
-      source:
-          abi: Comet
-      mapping:
-          kind: ethereum/events
-          apiVersion: 0.0.7
-          language: wasm/assemblyscript
-          entities: []
-          abis:
-              - name: Comet
-                file: ./abis/Comet.json
-              - name: Configurator
-                file: ./abis/Configurator.json
-              - name: Erc20
-                file: ./abis/Erc20.json
-              - name: CometRewardsV1
-                file: ./abis/CometRewardsV1.json
-              - name: CometRewardsV2
-                file: ./abis/CometRewardsV2.json
-              - name: ChainlinkOracle
-                file: ./abis/ChainlinkOracle.json
-          eventHandlers:
-              - event: Upgraded(indexed address)
-                handler: handleUpgraded
-              - event: Supply(indexed address,indexed address,uint256)
-                handler: handleSupply
-              - event: Withdraw(indexed address,indexed address,uint256)
-                handler: handleWithdraw
-              - event: AbsorbDebt(indexed address,indexed address,uint256,uint256)
-                handler: handleAbsorbDebt
-              - event: SupplyCollateral(indexed address,indexed address,indexed address,uint256)
-                handler: handleSupplyCollateral
-              - event: WithdrawCollateral(indexed address,indexed address,indexed address,uint256)
-                handler: handleWithdrawCollateral
-              - event: TransferCollateral(indexed address,indexed address,indexed address,uint256)
-                handler: handleTransferCollateral
-              - event: AbsorbCollateral(indexed address,indexed address,indexed address,uint256,uint256)
-                handler: handleAbsorbCollateral
-              - event: BuyCollateral(indexed address,indexed address,uint256,uint256)
-                handler: handleBuyCollateral
-              - event: WithdrawReserves(indexed address,uint256)
-                handler: handleWithdrawReserves
-              - event: Transfer(indexed address,indexed address,uint256)
-                handler: handleTransfer
-          file: ./src/mappings/comet.ts
+  - kind: ethereum
+    name: Comet
+    network: arbitrum-one
+    source:
+      abi: Comet
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities: []
+      abis:
+        - name: Comet
+          file: ./abis/Comet.json
+        - name: Configurator
+          file: ./abis/Configurator.json
+        - name: Erc20
+          file: ./abis/Erc20.json
+        - name: CometRewardsV1
+          file: ./abis/CometRewardsV1.json
+        - name: CometRewardsV2
+          file: ./abis/CometRewardsV2.json
+        - name: ChainlinkOracle
+          file: ./abis/ChainlinkOracle.json
+      eventHandlers:
+        - event: Upgraded(indexed address)
+          handler: handleUpgraded
+        - event: Supply(indexed address,indexed address,uint256)
+          handler: handleSupply
+        - event: Withdraw(indexed address,indexed address,uint256)
+          handler: handleWithdraw
+        - event: AbsorbDebt(indexed address,indexed address,uint256,uint256)
+          handler: handleAbsorbDebt
+        - event: SupplyCollateral(indexed address,indexed address,indexed address,uint256)
+          handler: handleSupplyCollateral
+        - event: WithdrawCollateral(indexed address,indexed address,indexed
+            address,uint256)
+          handler: handleWithdrawCollateral
+        - event: TransferCollateral(indexed address,indexed address,indexed
+            address,uint256)
+          handler: handleTransferCollateral
+        - event: AbsorbCollateral(indexed address,indexed address,indexed
+            address,uint256,uint256)
+          handler: handleAbsorbCollateral
+        - event: BuyCollateral(indexed address,indexed address,uint256,uint256)
+          handler: handleBuyCollateral
+        - event: WithdrawReserves(indexed address,uint256)
+          handler: handleWithdrawReserves
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleTransfer
+      file: ./src/mappings/comet.ts

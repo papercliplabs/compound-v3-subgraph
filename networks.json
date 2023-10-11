@@ -3,6 +3,40 @@
         "Configurator": {
             "address": "0x316f9708bB98af7dA9c68C1C3b5e79039cD336E3",
             "startBlock": 15331590
+        },
+        "CometRewards": {
+            "address": "0x1B0e765F6224C21223AeA2af16c1C46E38885a40",
+            "startBlock": 15331590
+        }
+    },
+    "matic": {
+        "Configurator": {
+            "address": "0x83E0F742cAcBE66349E3701B171eE2487a26e738",
+            "startBlock": 39412378
+        },
+        "CometRewards": {
+            "address": "0x45939657d1CA34A8FA39A924B71D28Fe8431e581",
+            "startBlock": 39412378
+        }
+    },
+    "arbitrum-one": {
+        "Configurator": {
+            "address": "0xb21b06D71c75973babdE35b49fFDAc3F82Ad3775",
+            "startBlock": 87335242
+        },
+        "CometRewards": {
+            "address": "0x88730d254A2f7e6AC8388c3198aFd694bA9f7fae",
+            "startBlock": 87335242
+        }
+    },
+    "base": {
+        "Configurator": {
+            "address": "0x45939657d1CA34A8FA39A924B71D28Fe8431e581",
+            "startBlock": 2197594
+        },
+        "CometRewards": {
+            "address": "0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1",
+            "startBlock": 2197594
         }
     }
 }

@@ -4,7 +4,10 @@
     "scripts": {
         "codegen": "graph codegen",
         "build": "graph build",
-        "deploy": "graph deploy --node https://api.thegraph.com/deploy/ papercliplabs/compound-v3",
+        "deploy-mainnet": "graph deploy --node https://api.thegraph.com/deploy/ papercliplabs/compound-v3 --network mainnet",
+        "deploy-matic": "graph deploy --node https://api.thegraph.com/deploy/ papercliplabs/compound-v3-polygon --network matic",
+        "deploy-base": "graph deploy --node https://api.thegraph.com/deploy/ papercliplabs/compound-v3-base --network base",
+        "deploy-arbitrum-one": "graph deploy --node https://api.thegraph.com/deploy/ papercliplabs/compound-v3-arbitrum --network arbitrum-one",
         "create-local": "graph create --node http://localhost:8020/ papercliplabs/compound-v3",
         "remove-local": "graph remove --node http://localhost:8020/ papercliplabs/compound-v3",
         "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 papercliplabs/compound-v3",
@@ -12,10 +15,7 @@
     },
     "dependencies": {
         "@graphprotocol/graph-cli": "0.57.0",
-        "@graphprotocol/graph-ts": "0.30.0",
-        "isomorphic-fetch": "^3.0.0",
-        "node-fetch": "^3.3.2",
-        "viem": "^1.15.4"
+        "@graphprotocol/graph-ts": "0.30.0"
     },
     "devDependencies": {
         "@types/node": "^20.8.3",

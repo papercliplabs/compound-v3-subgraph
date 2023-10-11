@@ -31,20 +31,38 @@ erDiagram
 
 # Subgraph Development
 
+Install dependencies:
+
 ```bash
 yarn
 ```
+
+Autogen code:
 
 ```bash
 yarn codegen
 ```
 
-```bash
-yarn build
-```
+Build:
 
 ```bash
-yarn deploy --access-token <access_token>
+yarn build --network <network_name>
+
+yarn build --network mainnet
+yarn build --network matic
+yarn build --network base
+yarn build --network arbitrum-one
+```
+
+Deploy:
+
+```bash
+yarn deploy-<network_name> --access-token <access_token>
+
+yarn deploy-mainnet --access-token <access_token>
+yarn deploy-matic --access-token <access_token>
+yarn deploy-base --access-token <access_token>
+yarn deploy-arbitrum-one --access-token <access_token>
 ```
 
 # Validation
@@ -55,4 +73,11 @@ Helpers used to derive the data for validation can be found in:
 
 -   Jupyter notebook [query.ipynb](./validation/query.ipynb): used to query subgraph and plot data
 -   The script [directContract.ts](./validation/directContract.ts): used to read comet contracts at specified blocks to compare with the subgraph
-    -   Run with: `ts-node directContract.ts`
+
+to run directContract.ts
+
+```bash
+cd validation
+yarn install
+ts-node directContract.ts
+```
