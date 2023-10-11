@@ -42,7 +42,7 @@ import {
     updatePositionCollateralBalance,
 } from "../mappingHelpers/collateralBalance";
 import { getOrCreateCollateralToken, getOrCreateToken } from "../mappingHelpers/token";
-import { TransactionType } from "../common/constants";
+import { InteractionType } from "../common/constants";
 import { updateUsageMetrics } from "../mappingHelpers/usage";
 
 export function handleUpgraded(event: UpgradedEvent): void {
@@ -73,7 +73,7 @@ export function handleSupply(event: SupplyEvent): void {
     updatePositionAccounting(position, positionAccounting, event);
 
     createSupplyBaseInteraction(market, position, from, amount, event);
-    updateUsageMetrics(account, market, TransactionType.SUPPLY_BASE, event);
+    updateUsageMetrics(account, market, InteractionType.SUPPLY_BASE, event);
 
     marketAccounting.save();
     positionAccounting.save();
@@ -94,7 +94,7 @@ export function handleWithdraw(event: WithdrawEvent): void {
     updatePositionAccounting(position, positionAccounting, event);
 
     createWithdrawBaseInteraction(market, position, destination, amount, event);
-    updateUsageMetrics(account, market, TransactionType.WITHDRAW_BASE, event);
+    updateUsageMetrics(account, market, InteractionType.WITHDRAW_BASE, event);
 
     marketAccounting.save();
     positionAccounting.save();
@@ -115,7 +115,7 @@ export function handleAbsorbDebt(event: AbsorbDebtEvent): void {
     updatePositionAccounting(position, positionAccounting, event);
 
     createAbsorbDebtInteraction(market, position, absorber, amount, event);
-    updateUsageMetrics(account, market, TransactionType.LIQUIDATION, event);
+    updateUsageMetrics(account, market, InteractionType.LIQUIDATION, event);
 
     marketAccounting.save();
     positionAccounting.save();
@@ -145,7 +145,7 @@ export function handleSupplyCollateral(event: SupplyCollateralEvent): void {
     updatePositionAccounting(position, positionAccounting, event);
 
     createSupplyCollateralInteraction(market, position, supplier, collateralToken, amount, event);
-    updateUsageMetrics(account, market, TransactionType.SUPPLY_COLLATERAL, event);
+    updateUsageMetrics(account, market, InteractionType.SUPPLY_COLLATERAL, event);
 
     marketCollateralBalance.save();
     positionCollateralBalance.save();
@@ -177,7 +177,7 @@ export function handleWithdrawCollateral(event: WithdrawCollateralEvent): void {
     updatePositionAccounting(position, positionAccounting, event);
 
     createWithdrawCollateralInteraction(market, position, destination, collateralToken, amount.neg(), event);
-    updateUsageMetrics(account, market, TransactionType.WITHDRAW_COLLATERAL, event);
+    updateUsageMetrics(account, market, InteractionType.WITHDRAW_COLLATERAL, event);
 
     marketCollateralBalance.save();
     positionCollateralBalance.save();
@@ -213,7 +213,7 @@ export function handleTransferCollateral(event: TransferCollateralEvent): void {
     updatePositionAccounting(toPosition, toPositionAccounting, event);
 
     createTransferCollateralInteraction(market, fromPosition, toPosition, collateralToken, amount, event);
-    updateUsageMetrics(fromAccount, market, TransactionType.TRANSFER_COLLATERAL, event);
+    updateUsageMetrics(fromAccount, market, InteractionType.TRANSFER_COLLATERAL, event);
 
     fromPositionCollateralBalance.save();
     toPositionCollateralBalance.save();

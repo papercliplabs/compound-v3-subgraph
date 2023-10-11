@@ -354,8 +354,8 @@ type Usage @entity {
 
     "Number of unique users"
     uniqueUsersCount: BigInt!
-    "Number of transactions"
-    transactionCount: BigInt!
+    "Number of interactions"
+    interactionCount: BigInt!
     "Number of base supply interactions"
     supplyBaseCount: BigInt!
     "Number of base withdraw interactions"
@@ -650,6 +650,8 @@ type PositionCollateralBalance implements CollateralBalance @entity {
     lastUpdateBlockNumber: BigInt!
     "Balance of collateralToken"
     balance: BigInt!
+    "Balance in USD of the collateral token"
+    balanceUsd: BigDecimal!
 }
 
 ####

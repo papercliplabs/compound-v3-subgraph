@@ -27,7 +27,7 @@ export const COMET_FACTOR_SCALE: BigInt = BigInt.fromString("1000000000000000000
 export const REWARD_FACTOR_SCALE: BigInt = BigInt.fromString("1000000000000000000"); // 10^18
 export const PRICE_FEED_FACTOR: BigDecimal = BigDecimal.fromString("100000000"); // 10^8
 
-export namespace TransactionType {
+export namespace InteractionType {
     export const SUPPLY_BASE = "SUPPLY_BASE";
     export const WITHDRAW_BASE = "WITHDRAW_BASE";
     export const LIQUIDATION = "LIQUIDATION";

@@ -13,7 +13,7 @@ import { getOrCreateMarket, getOrCreateMarketAccounting, getOrCreateMarketConfig
 import { computeTokenValueUsd, presentValue } from "../common/utils";
 import { Comet as CometContract } from "../../generated/templates/Comet/Comet";
 import { getOrCreateToken, getTokenPriceUsd } from "./token";
-import { getOrCreatePositionCollateralBalance } from "./collateralBalance";
+import { getOrCreatePositionCollateralBalance, updatePositionCollateralBalanceUsd } from "./collateralBalance";
 
 ////
 // Position Accounting
@@ -73,16 +73,12 @@ export function updatePositionAccounting(
     let totalCollateralBalanceUsd = ZERO_BD;
     for (let i = 0; i < collateralTokenIds.length; i++) {
         const collateralToken = CollateralToken.load(collateralTokenIds[i])!; // Guaranteed to exist
-        const collateralTokenToken = getOrCreateToken(Address.fromBytes(collateralToken.token), event);
-        const collateralTokenBalance = getOrCreatePositionCollateralBalance(collateralToken, position, event);
-        const tokenPrice = getTokenPriceUsd(collateralToken, event);
-        const collateralTokenBalanceUsd = computeTokenValueUsd(
-            collateralTokenBalance.balance,
-            u8(collateralTokenToken.decimals),
-            tokenPrice
-        );
+        const collateralBalance = getOrCreatePositionCollateralBalance(collateralToken, position, event);
 
-        totalCollateralBalanceUsd = totalCollateralBalanceUsd.plus(collateralTokenBalanceUsd);
+        updatePositionCollateralBalanceUsd(collateralBalance, event);
+        collateralBalance.save();
+
+        totalCollateralBalanceUsd = totalCollateralBalanceUsd.plus(collateralBalance.balanceUsd);
     }
     accounting.collateralBalanceUsd = totalCollateralBalanceUsd;
 

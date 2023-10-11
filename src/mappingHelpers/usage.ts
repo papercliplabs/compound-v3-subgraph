@@ -14,7 +14,7 @@ import {
     ONE_BI,
     SECONDS_PER_DAY,
     SECONDS_PER_HOUR,
-    TransactionType,
+    InteractionType,
     ZERO_BI,
 } from "../common/constants";
 import { getOrCreateProtocol } from "./protocol";
@@ -28,7 +28,7 @@ export function getOrCreateUsage(id: Bytes): Usage {
         usage.protocol = CONFIGURATOR_PROXY_ADDRESS;
 
         usage.uniqueUsersCount = ZERO_BI;
-        usage.transactionCount = ZERO_BI;
+        usage.interactionCount = ZERO_BI;
         usage.supplyBaseCount = ZERO_BI;
         usage.withdrawBaseCount = ZERO_BI;
         usage.liquidationCount = ZERO_BI;
@@ -141,7 +141,7 @@ function tryToCreateActiveAccount(address: Address, metadata: string): boolean {
 export function updateUsageMetrics(
     account: Account,
     market: Market,
-    transactionType: string,
+    interactionType: string,
     event: ethereum.Event
 ): void {
     const day = event.block.timestamp.div(SECONDS_PER_DAY);
@@ -202,48 +202,48 @@ export function updateUsageMetrics(
     marketDailyUsage.uniqueUsersCount = marketDailyUsage.uniqueUsersCount.plus(newMarketDailyAcc ? ONE_BI : ZERO_BI);
 
     // Update txs
-    protocolCumulativeUsage.transactionCount = protocolCumulativeUsage.transactionCount.plus(ONE_BI);
-    protocolHourlyUsage.transactionCount = protocolHourlyUsage.transactionCount.plus(ONE_BI);
-    protocolDailyUsage.transactionCount = protocolDailyUsage.transactionCount.plus(ONE_BI);
-    marketCumulativeUsage.transactionCount = marketCumulativeUsage.transactionCount.plus(ONE_BI);
-    marketHourlyUsage.transactionCount = marketHourlyUsage.transactionCount.plus(ONE_BI);
-    marketDailyUsage.transactionCount = marketDailyUsage.transactionCount.plus(ONE_BI);
-    if (TransactionType.SUPPLY_BASE == transactionType) {
+    protocolCumulativeUsage.interactionCount = protocolCumulativeUsage.interactionCount.plus(ONE_BI);
+    protocolHourlyUsage.interactionCount = protocolHourlyUsage.interactionCount.plus(ONE_BI);
+    protocolDailyUsage.interactionCount = protocolDailyUsage.interactionCount.plus(ONE_BI);
+    marketCumulativeUsage.interactionCount = marketCumulativeUsage.interactionCount.plus(ONE_BI);
+    marketHourlyUsage.interactionCount = marketHourlyUsage.interactionCount.plus(ONE_BI);
+    marketDailyUsage.interactionCount = marketDailyUsage.interactionCount.plus(ONE_BI);
+    if (InteractionType.SUPPLY_BASE == interactionType) {
         protocolCumulativeUsage.supplyBaseCount = protocolCumulativeUsage.supplyBaseCount.plus(ONE_BI);
         protocolHourlyUsage.supplyBaseCount = protocolHourlyUsage.supplyBaseCount.plus(ONE_BI);
         protocolDailyUsage.supplyBaseCount = protocolDailyUsage.supplyBaseCount.plus(ONE_BI);
         marketCumulativeUsage.supplyBaseCount = marketCumulativeUsage.supplyBaseCount.plus(ONE_BI);
         marketHourlyUsage.supplyBaseCount = marketHourlyUsage.supplyBaseCount.plus(ONE_BI);
         marketDailyUsage.supplyBaseCount = marketDailyUsage.supplyBaseCount.plus(ONE_BI);
-    } else if (TransactionType.WITHDRAW_BASE == transactionType) {
+    } else if (InteractionType.WITHDRAW_BASE == interactionType) {
         protocolCumulativeUsage.withdrawBaseCount = protocolCumulativeUsage.withdrawBaseCount.plus(ONE_BI);
         protocolHourlyUsage.withdrawBaseCount = protocolHourlyUsage.withdrawBaseCount.plus(ONE_BI);
         protocolDailyUsage.withdrawBaseCount = protocolDailyUsage.withdrawBaseCount.plus(ONE_BI);
         marketCumulativeUsage.withdrawBaseCount = marketCumulativeUsage.withdrawBaseCount.plus(ONE_BI);
         marketHourlyUsage.withdrawBaseCount = marketHourlyUsage.withdrawBaseCount.plus(ONE_BI);
         marketDailyUsage.withdrawBaseCount = marketDailyUsage.withdrawBaseCount.plus(ONE_BI);
-    } else if (TransactionType.LIQUIDATION == transactionType) {
+    } else if (InteractionType.LIQUIDATION == interactionType) {
         protocolCumulativeUsage.liquidationCount = protocolCumulativeUsage.liquidationCount.plus(ONE_BI);
         protocolHourlyUsage.liquidationCount = protocolHourlyUsage.liquidationCount.plus(ONE_BI);
         protocolDailyUsage.liquidationCount = protocolDailyUsage.liquidationCount.plus(ONE_BI);
         marketCumulativeUsage.liquidationCount = marketCumulativeUsage.liquidationCount.plus(ONE_BI);
         marketHourlyUsage.liquidationCount = marketHourlyUsage.liquidationCount.plus(ONE_BI);
         marketDailyUsage.liquidationCount = marketDailyUsage.liquidationCount.plus(ONE_BI);
-    } else if (TransactionType.SUPPLY_COLLATERAL == transactionType) {
+    } else if (InteractionType.SUPPLY_COLLATERAL == interactionType) {
         protocolCumulativeUsage.supplyCollateralCount = protocolCumulativeUsage.supplyCollateralCount.plus(ONE_BI);
         protocolHourlyUsage.supplyCollateralCount = protocolHourlyUsage.supplyCollateralCount.plus(ONE_BI);
         protocolDailyUsage.supplyCollateralCount = protocolDailyUsage.supplyCollateralCount.plus(ONE_BI);
         marketCumulativeUsage.supplyCollateralCount = marketCumulativeUsage.supplyCollateralCount.plus(ONE_BI);
         marketHourlyUsage.supplyCollateralCount = marketHourlyUsage.supplyCollateralCount.plus(ONE_BI);
         marketDailyUsage.supplyCollateralCount = marketDailyUsage.supplyCollateralCount.plus(ONE_BI);
-    } else if (TransactionType.WITHDRAW_COLLATERAL == transactionType) {
+    } else if (InteractionType.WITHDRAW_COLLATERAL == interactionType) {
         protocolCumulativeUsage.withdrawCollateralCount = protocolCumulativeUsage.withdrawCollateralCount.plus(ONE_BI);
         protocolHourlyUsage.withdrawCollateralCount = protocolHourlyUsage.withdrawCollateralCount.plus(ONE_BI);
         protocolDailyUsage.withdrawCollateralCount = protocolDailyUsage.withdrawCollateralCount.plus(ONE_BI);
         marketCumulativeUsage.withdrawCollateralCount = marketCumulativeUsage.withdrawCollateralCount.plus(ONE_BI);
         marketHourlyUsage.withdrawCollateralCount = marketHourlyUsage.withdrawCollateralCount.plus(ONE_BI);
         marketDailyUsage.withdrawCollateralCount = marketDailyUsage.withdrawCollateralCount.plus(ONE_BI);
-    } else if (TransactionType.TRANSFER_COLLATERAL == transactionType) {
+    } else if (InteractionType.TRANSFER_COLLATERAL == interactionType) {
         protocolCumulativeUsage.transferCollateralCount = protocolCumulativeUsage.transferCollateralCount.plus(ONE_BI);
         protocolHourlyUsage.transferCollateralCount = protocolHourlyUsage.transferCollateralCount.plus(ONE_BI);
         protocolDailyUsage.transferCollateralCount = protocolDailyUsage.transferCollateralCount.plus(ONE_BI);
@@ -251,7 +251,7 @@ export function updateUsageMetrics(
         marketHourlyUsage.transferCollateralCount = marketHourlyUsage.transferCollateralCount.plus(ONE_BI);
         marketDailyUsage.transferCollateralCount = marketDailyUsage.transferCollateralCount.plus(ONE_BI);
     } else {
-        log.warning("updateUsageMetrics called with invalid transactionType: {}", [transactionType]);
+        log.warning("updateUsageMetrics called with invalid interactionType: {}", [interactionType]);
     }
 
     protocolCumulativeUsage.save();

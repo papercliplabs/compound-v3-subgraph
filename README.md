@@ -49,14 +49,10 @@ yarn deploy --access-token <access_token>
 
 # Validation
 
-See the jupyter notebook [query.ipynb](./validation/query.ipynb) for subgraph query and charting.
-
-[directContract.ts](./validation/directContract.ts) reads the compound contracts at specified block numbers to compare with the subgraph.
-
-Run directContract.ts
-
-```bash
-ts-node directContract.ts
-```
-
 Validation is summarized in [this spreadsheet](https://docs.google.com/spreadsheets/d/1LWKhGglj5AQbRJOgTfqkDOssok-QBzzifwl1gk8rxCc/edit#gid=1642772597)
+
+Helpers used to derive the data for validation can be found in:
+
+-   Jupyter notebook [query.ipynb](./validation/query.ipynb): used to query subgraph and plot data
+-   The script [directContract.ts](./validation/directContract.ts): used to read comet contracts at specified blocks to compare with the subgraph
+    -   Run with: `ts-node directContract.ts`

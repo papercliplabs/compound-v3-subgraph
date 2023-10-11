@@ -60,6 +60,7 @@ export function updateMarketCollateralBalanceUsd(
     const collateralTokenToken = getOrCreateToken(Address.fromBytes(collateralToken.token), event);
     const price = getTokenPriceUsd(collateralToken, event);
 
+    collateralBalance.lastUpdateBlockNumber = event.block.number;
     collateralBalance.balanceUsd = computeTokenValueUsd(
         collateralBalance.balance,
         u8(collateralTokenToken.decimals),
@@ -92,6 +93,7 @@ export function getOrCreatePositionCollateralBalance(
         collateralBalance.position = position.id;
 
         updatePositionCollateralBalance(position, collateralBalance, event);
+        updatePositionCollateralBalanceUsd(collateralBalance, event);
 
         collateralBalance.save();
     }
@@ -114,4 +116,20 @@ export function updatePositionCollateralBalance(
 
     collateralBalance.lastUpdateBlockNumber = event.block.number;
     collateralBalance.balance = userCollateral.getBalance();
+}
+
+export function updatePositionCollateralBalanceUsd(
+    collateralBalance: PositionCollateralBalance,
+    event: ethereum.Event
+): void {
+    const collateralToken = CollateralToken.load(collateralBalance.collateralToken)!;
+    const collateralTokenToken = getOrCreateToken(Address.fromBytes(collateralToken.token), event);
+    const price = getTokenPriceUsd(collateralToken, event);
+
+    collateralBalance.lastUpdateBlockNumber = event.block.number;
+    collateralBalance.balanceUsd = computeTokenValueUsd(
+        collateralBalance.balance,
+        u8(collateralTokenToken.decimals),
+        price
+    );
 }
