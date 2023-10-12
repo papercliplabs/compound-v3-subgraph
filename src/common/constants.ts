@@ -1,13 +1,6 @@
 import { Address, BigDecimal, BigInt } from "@graphprotocol/graph-ts";
 
-export const CONFIGURATOR_PROXY_ADDRESS = Address.fromString("0x316f9708bB98af7dA9c68C1C3b5e79039cD336E3");
-export const COMET_REWARDS_ADDRESS = Address.fromString("0x1B0e765F6224C21223AeA2af16c1C46E38885a40");
-
-export const CHAINLINK_ORACLE_ADDRESS = Address.fromString("0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf");
-export const CHAINLINK_USD_ADDRESS = Address.fromString("0x0000000000000000000000000000000000000348");
-export const CHAINLINK_ETH_USDC_PRICE_FEED = Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419");
-
-export const WETH_MARKET_ADDRESS = Address.fromString("0xA17581A9E3356d9A858b789D68B4d866e593aE94");
+export const ZERO_ADDRESS = Address.fromString("0x0000000000000000000000000000000000000000");
 
 export const DAYS_PER_YEAR: BigInt = BigInt.fromString("365");
 export const SECONDS_PER_HOUR: BigInt = BigInt.fromString("3600");

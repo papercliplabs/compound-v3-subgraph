@@ -42,8 +42,8 @@ dataSources:
           file: ./abis/CometRewardsV2.json
         - name: Erc20
           file: ./abis/Erc20.json
-        - name: ChainlinkOracle
-          file: ./abis/ChainlinkOracle.json
+        - name: ChainlinkPriceFeed
+          file: ./abis/ChainlinkPriceFeed.json
         - name: Comet
           file: ./abis/Comet.json
       eventHandlers:
@@ -72,8 +72,8 @@ templates:
           file: ./abis/CometRewardsV1.json
         - name: CometRewardsV2
           file: ./abis/CometRewardsV2.json
-        - name: ChainlinkOracle
-          file: ./abis/ChainlinkOracle.json
+        - name: ChainlinkPriceFeed
+          file: ./abis/ChainlinkPriceFeed.json
       eventHandlers:
         - event: Upgraded(indexed address)
           handler: handleUpgraded

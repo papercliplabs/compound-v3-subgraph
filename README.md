@@ -1,7 +1,16 @@
 # Deployments
 
 -   Ethereum Mainnet:
-    -   [Hosted Subgraph](https://thegraph.com/hosted-service/subgraph/papercliplabs/compound-v3)
+    -   [Hosted Subgraph](https://thegraph.com/hosted-service/subgraph/papercliplabs/compound-v3-mainnet)
+    -   [Decentralized Subgraph](https://thegraph.com/explorer/subgraphs/5nwMCSHaTqG3Kd2gHznbTXEnZ9QNWsssQfbHhDqQSQFp?view=Overview&chain=arbitrum-one)
+-   Polygon
+    -   [Hosted Subgraph](https://thegraph.com/hosted-service/subgraph/papercliplabs/compound-v3-polygon)
+-   Arbitrum
+    -   [Hosted Subgraph](https://thegraph.com/hosted-service/subgraph/papercliplabs/compound-v3-arbitrum)
+-   Base
+    -   [Hosted Subgraph](https://thegraph.com/hosted-service/subgraph/papercliplabs/compound-v3-base)
+
+Decentralized subgraphs require an API key. We provide one for the Compound Community, just ask for it in the Compound discord! Please don't abuse this, otherwise we will have to revoke it.
 
 # Usage Notes
 
@@ -50,19 +59,30 @@ yarn build --network <network_name>
 
 yarn build --network mainnet
 yarn build --network matic
-yarn build --network base
 yarn build --network arbitrum-one
+yarn build --network base
 ```
 
-Deploy:
+Hosted Network Deployment:
 
 ```bash
 yarn deploy-<network_name> --access-token <access_token>
 
 yarn deploy-mainnet --access-token <access_token>
 yarn deploy-matic --access-token <access_token>
-yarn deploy-base --access-token <access_token>
 yarn deploy-arbitrum-one --access-token <access_token>
+yarn deploy-base --access-token <access_token>
+```
+
+Decentralized Network Deployment:
+
+```bash
+yarn deploy-<network_name> --access-token <access_token>
+
+graph deploy --studio compound-v3-mainnet --deploy-key <deploy_key>
+graph deploy --studio compound-v3-polygon --deploy-key <deploy_key>
+graph deploy --studio compound-v3-arbitrum --deploy-key <deploy_key>
+graph deploy --studio compound-v3-base --deploy-key <deploy_key>
 ```
 
 # Validation

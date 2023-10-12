@@ -1,9 +1,10 @@
 import "isomorphic-fetch";
 
 import { Abi, Address, createPublicClient, http, parseAbi } from "viem";
-import { mainnet } from "viem/chains";
+import { mainnet, polygon } from "viem/chains";
 import cometAbi from "../abis/comet.json";
 import erc20Abi from "../abis/Erc20.json";
+import configuratorAbi from "../abis/Configurator.json";
 
 // Make BigInt serializable...
 (BigInt.prototype as any).toJSON = function() {
@@ -218,11 +219,26 @@ async function main() {
     // console.log("\n\n\n");
     // await marketCollateralInfo(COMET_ADDRESS, "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599", BigInt(18315072));
     // console.log("\n\n\n");
-    await getPositionInfo(
-        "0xa17581a9e3356d9a858b789d68b4d866e593ae94",
-        "0x10d88638be3c26f3a47d861b8b5641508501035d",
-        BigInt(17607287)
-    );
+    // await getPositionInfo(
+    //     "0xa17581a9e3356d9a858b789d68b4d866e593ae94",
+    //     "0x10d88638be3c26f3a47d861b8b5641508501035d",
+    //     BigInt(17607287)
+    // );
+
+    const client = createPublicClient({
+        chain: polygon,
+        transport: http(),
+    });
+
+    const f = await client.readContract({
+        address: "0x83E0F742cAcBE66349E3701B171eE2487a26e738",
+        abi: configuratorAbi,
+        functionName: "factory",
+        args: ["0xF25212E676D1F7F89Cd72fFEe66158f541246445"],
+        blockNumber: BigInt(39413523),
+    });
+
+    console.log(f);
 }
 
 main();

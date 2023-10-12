@@ -2,17 +2,15 @@ import { Address, BigDecimal, Bytes, ethereum, log } from "@graphprotocol/graph-
 import { Token, BaseToken, Market, CollateralToken } from "../../generated/schema";
 import { Erc20 as Erc20Contract } from "../../generated/templates/Comet/Erc20";
 import { Comet as CometContract } from "../../generated/templates/Comet/Comet";
+import { ChainlinkPriceFeed as ChainlinkPriceFeedContract } from "../../generated/templates/Comet/ChainlinkPriceFeed";
 import { formatUnits } from "../common/utils";
+import { PRICE_FEED_FACTOR, ZERO_ADDRESS, ZERO_BD, ZERO_BI } from "../common/constants";
 import {
-    CHAINLINK_ETH_USDC_PRICE_FEED,
-    CHAINLINK_ORACLE_ADDRESS,
-    CHAINLINK_USD_ADDRESS,
-    PRICE_FEED_FACTOR,
-    WETH_MARKET_ADDRESS,
-    ZERO_BD,
-    ZERO_BI,
-} from "../common/constants";
-import { ChainlinkOracle as ChainlinkOracleContract } from "../../generated/templates/Comet/ChainlinkOracle";
+    getChainlinkCompUsdPriceFeedAddress,
+    getChainlinkEthUsdPriceFeedAddress,
+    getCompTokenAddress,
+    getWethMarketAddress,
+} from "../common/networkSpecific";
 
 ////
 // Token
@@ -118,18 +116,34 @@ export function updateCollateralTokenConfig(collateralToken: CollateralToken, ev
 // Price
 ////
 
+function getPriceFeedAddressForToken(token: Token): Address {
+    // Other feeds can be added here also
+    if (token.address.equals(getCompTokenAddress())) {
+        return getChainlinkCompUsdPriceFeedAddress();
+    } else {
+        log.warning("getPriceFeedAddressForToken - no price feed for {}", [token.address.toString()]);
+        return ZERO_ADDRESS;
+    }
+}
+
 function getTokenPriceWithGenericOracleUsd(token: Token, event: ethereum.Event): BigDecimal {
     if (token.lastPriceBlockNumber != event.block.number) {
-        const chainlink = ChainlinkOracleContract.bind(CHAINLINK_ORACLE_ADDRESS);
+        const priceFeedAddress = getPriceFeedAddressForToken(token);
 
-        const tryLatestRoundData = chainlink.try_latestRoundData(Address.fromBytes(token.id), CHAINLINK_USD_ADDRESS);
-
-        if (!tryLatestRoundData.reverted) {
-            const price = tryLatestRoundData.value.value1.toBigDecimal().div(PRICE_FEED_FACTOR);
-
-            token.lastPriceBlockNumber = event.block.number;
-            token.lastPriceUsd = price;
-            token.save();
+        if (ZERO_ADDRESS != priceFeedAddress) {
+            const priceFeed = ChainlinkPriceFeedContract.bind(priceFeedAddress);
+            const tryLatestRoundData = priceFeed.try_latestRoundData();
+            if (!tryLatestRoundData.reverted) {
+                const price = tryLatestRoundData.value.value1.toBigDecimal().div(PRICE_FEED_FACTOR);
+                token.lastPriceBlockNumber = event.block.number;
+                token.lastPriceUsd = price;
+                token.save();
+            } else {
+                log.warning("getTokenPriceWithGenericOracleUsd - try_latestRoundData reverted for {} - {}", [
+                    priceFeedAddress.toString(),
+                    token.address.toString(),
+                ]);
+            }
         }
     }
 
@@ -137,7 +151,7 @@ function getTokenPriceWithGenericOracleUsd(token: Token, event: ethereum.Event):
 }
 
 function getBaseTokenPriceUsd(token: BaseToken, event: ethereum.Event): BigDecimal {
-    const isWethMarket = Address.fromBytes(token.market).equals(WETH_MARKET_ADDRESS);
+    const isWethMarket = Address.fromBytes(token.market).equals(getWethMarketAddress());
 
     if (token.lastPriceBlockNumber != event.block.number) {
         const comet = CometContract.bind(Address.fromBytes(token.market));
@@ -150,7 +164,7 @@ function getBaseTokenPriceUsd(token: BaseToken, event: ethereum.Event): BigDecim
             if (isWethMarket) {
                 // In WETH markets, price is returned in ETH, so need to convert to USD after
                 const ethPrice = comet
-                    .getPrice(CHAINLINK_ETH_USDC_PRICE_FEED)
+                    .getPrice(getChainlinkEthUsdPriceFeedAddress())
                     .toBigDecimal()
                     .div(PRICE_FEED_FACTOR);
 
@@ -167,7 +181,7 @@ function getBaseTokenPriceUsd(token: BaseToken, event: ethereum.Event): BigDecim
 }
 
 function getCollateralTokenPriceUsd(token: CollateralToken, event: ethereum.Event): BigDecimal {
-    const isWethMarket = Address.fromBytes(token.market).equals(WETH_MARKET_ADDRESS);
+    const isWethMarket = Address.fromBytes(token.market).equals(getWethMarketAddress());
     let price = token.lastPriceUsd;
 
     if (token.lastPriceBlockNumber != event.block.number) {
@@ -181,7 +195,7 @@ function getCollateralTokenPriceUsd(token: CollateralToken, event: ethereum.Even
             if (isWethMarket) {
                 // In WETH markets, price is returned in ETH, so need to convert to USD after
                 const ethPrice = comet
-                    .getPrice(CHAINLINK_ETH_USDC_PRICE_FEED)
+                    .getPrice(getChainlinkEthUsdPriceFeedAddress())
                     .toBigDecimal()
                     .div(PRICE_FEED_FACTOR);
 

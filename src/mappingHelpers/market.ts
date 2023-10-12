@@ -16,13 +16,13 @@ import { Configurator as ConfiguratorContract } from "../../generated/templates/
 import {
     BASE_INDEX_SCALE,
     COMET_FACTOR_SCALE,
-    CONFIGURATOR_PROXY_ADDRESS,
     DAYS_PER_YEAR,
     REWARD_FACTOR_SCALE,
     SECONDS_PER_DAY,
     SECONDS_PER_HOUR,
     SECONDS_PER_WEEK,
     SECONDS_PER_YEAR,
+    ZERO_ADDRESS,
     ZERO_BD,
 } from "../common/constants";
 import { bigDecimalSafeDiv, computeTokenValueUsd, formatUnits, getRewardConfigData } from "../common/utils";
@@ -37,6 +37,7 @@ import {
 import { getOrCreateUsage } from "./usage";
 import { getOrCreateMarketCollateralBalance, updateMarketCollateralBalanceUsd } from "./collateralBalance";
 import { getOrCreateProtocol, getOrCreateProtocolAccounting, updateProtocolAccounting } from "./protocol";
+import { getConfiguratorProxyAddress } from "../common/networkSpecific";
 
 ////
 // Market Configuration
@@ -59,14 +60,15 @@ export function getOrCreateMarketConfiguration(market: Market, event: ethereum.E
 
 export function updateMarketConfiguration(market: Market, config: MarketConfiguration, event: ethereum.Event): void {
     const comet = CometContract.bind(Address.fromBytes(market.id));
-    const configurator = ConfiguratorContract.bind(CONFIGURATOR_PROXY_ADDRESS);
+    const configurator = ConfiguratorContract.bind(getConfiguratorProxyAddress());
+    const tryFactory = configurator.try_factory(Address.fromBytes(market.id));
 
     // cometImplementation must be added externally
     config.market = market.id;
     config.lastConfigurationUpdateBlockNumber = event.block.number;
     config.name = comet.name();
     config.symbol = comet.symbol();
-    config.factory = configurator.factory(Address.fromBytes(market.id));
+    config.factory = tryFactory.reverted ? ZERO_ADDRESS : tryFactory.value;
     config.governor = comet.governor();
     config.pauseGuardian = comet.pauseGuardian();
     config.extensionDelegate = comet.extensionDelegate();
@@ -369,7 +371,7 @@ export function getOrCreateMarket(marketId: Address, event: ethereum.Event): Mar
         const usage = getOrCreateUsage(Bytes.fromUTF8("MARKET_CUMULATIVE").concat(market.id));
 
         market.cometProxy = marketId;
-        market.protocol = CONFIGURATOR_PROXY_ADDRESS;
+        market.protocol = getConfiguratorProxyAddress();
         market.creationBlockNumber = event.block.number;
 
         market.cumulativeUsage = usage.id;

@@ -7,17 +7,12 @@ import {
     WeeklyProtocolAccounting,
     _ActiveAccount,
 } from "../../generated/schema";
-import {
-    CONFIGURATOR_PROXY_ADDRESS,
-    SECONDS_PER_DAY,
-    SECONDS_PER_HOUR,
-    SECONDS_PER_WEEK,
-    ZERO_BD,
-} from "../common/constants";
+import { SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_WEEK, ZERO_BD } from "../common/constants";
 
 import { getOrCreateUsage } from "./usage";
 import { getOrCreateMarket, getOrCreateMarketAccounting } from "./market";
 import { bigDecimalSafeDiv } from "../common/utils";
+import { getConfiguratorProxyAddress } from "../common/networkSpecific";
 
 ////
 // Protocol Accounting
@@ -142,7 +137,7 @@ function createProtocolAccountingSnapshots(accounting: ProtocolAccounting, event
             hourlyAccounting = new HourlyProtocolAccounting(hourlyId);
             hourlyAccounting.hour = hour;
             hourlyAccounting.timestamp = event.block.timestamp;
-            hourlyAccounting.protocol = CONFIGURATOR_PROXY_ADDRESS;
+            hourlyAccounting.protocol = getConfiguratorProxyAddress();
             hourlyAccounting.accounting = copiedAccounting.id;
             hourlyAccounting.save();
         }
@@ -150,7 +145,7 @@ function createProtocolAccountingSnapshots(accounting: ProtocolAccounting, event
             dailyAccounting = new DailyProtocolAccounting(dailyId);
             dailyAccounting.day = day;
             dailyAccounting.timestamp = event.block.timestamp;
-            dailyAccounting.protocol = CONFIGURATOR_PROXY_ADDRESS;
+            dailyAccounting.protocol = getConfiguratorProxyAddress();
             dailyAccounting.accounting = copiedAccounting.id;
             dailyAccounting.save();
         }
@@ -158,7 +153,7 @@ function createProtocolAccountingSnapshots(accounting: ProtocolAccounting, event
             weeklyAccounting = new WeeklyProtocolAccounting(weeklyId);
             weeklyAccounting.week = week;
             weeklyAccounting.timestamp = event.block.timestamp;
-            weeklyAccounting.protocol = CONFIGURATOR_PROXY_ADDRESS;
+            weeklyAccounting.protocol = getConfiguratorProxyAddress();
             weeklyAccounting.accounting = copiedAccounting.id;
             weeklyAccounting.save();
         }
@@ -170,12 +165,12 @@ function createProtocolAccountingSnapshots(accounting: ProtocolAccounting, event
 ////
 
 export function getOrCreateProtocol(event: ethereum.Event): Protocol {
-    let protocol = Protocol.load(CONFIGURATOR_PROXY_ADDRESS);
+    let protocol = Protocol.load(getConfiguratorProxyAddress());
 
     if (!protocol) {
-        protocol = new Protocol(CONFIGURATOR_PROXY_ADDRESS);
+        protocol = new Protocol(getConfiguratorProxyAddress());
 
-        protocol.configuratorProxy = CONFIGURATOR_PROXY_ADDRESS;
+        protocol.configuratorProxy = getConfiguratorProxyAddress();
 
         protocol.markets = [];
 

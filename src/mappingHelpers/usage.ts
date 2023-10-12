@@ -9,15 +9,9 @@ import {
     Usage,
     _ActiveAccount,
 } from "../../generated/schema";
-import {
-    CONFIGURATOR_PROXY_ADDRESS,
-    ONE_BI,
-    SECONDS_PER_DAY,
-    SECONDS_PER_HOUR,
-    InteractionType,
-    ZERO_BI,
-} from "../common/constants";
+import { ONE_BI, SECONDS_PER_DAY, SECONDS_PER_HOUR, InteractionType, ZERO_BI } from "../common/constants";
 import { getOrCreateProtocol } from "./protocol";
+import { getConfiguratorProxyAddress } from "../common/networkSpecific";
 
 export function getOrCreateUsage(id: Bytes): Usage {
     let usage = Usage.load(id);
@@ -25,7 +19,7 @@ export function getOrCreateUsage(id: Bytes): Usage {
     if (!usage) {
         usage = new Usage(id);
 
-        usage.protocol = CONFIGURATOR_PROXY_ADDRESS;
+        usage.protocol = getConfiguratorProxyAddress();
 
         usage.uniqueUsersCount = ZERO_BI;
         usage.interactionCount = ZERO_BI;

@@ -4,7 +4,7 @@
     "scripts": {
         "codegen": "graph codegen",
         "build": "graph build",
-        "deploy-mainnet": "graph deploy --node https://api.thegraph.com/deploy/ papercliplabs/compound-v3 --network mainnet",
+        "deploy-mainnet": "graph deploy --node https://api.thegraph.com/deploy/ papercliplabs/compound-v3-mainnet --network mainnet",
         "deploy-matic": "graph deploy --node https://api.thegraph.com/deploy/ papercliplabs/compound-v3-polygon --network matic",
         "deploy-base": "graph deploy --node https://api.thegraph.com/deploy/ papercliplabs/compound-v3-base --network base",
         "deploy-arbitrum-one": "graph deploy --node https://api.thegraph.com/deploy/ papercliplabs/compound-v3-arbitrum --network arbitrum-one",
