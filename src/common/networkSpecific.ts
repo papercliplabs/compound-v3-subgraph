@@ -33,7 +33,7 @@ const wethMarketProxyAddress = new Map<string, Address>()
 const compTokenAddress = new Map<string, Address>()
     .set(SupportedChain.MAINNET, Address.fromString("0xc00e94Cb662C3520282E6f5717214004A7f26888"))
     .set(SupportedChain.POLYGON, Address.fromString("0x8505b9d2254A7Ae468c0E9dd10Ccea3A837aef5c"))
-    .set(SupportedChain.BASE, Address.fromString("0xc00e94Cb662C3520282E6f5717214004A7f26888"))
+    .set(SupportedChain.BASE, Address.fromString("0x9e1028f5f1d5ede59748ffcee5532509976840e0"))
     .set(SupportedChain.ARBITRUM, Address.fromString("0x354A6dA3fcde098F8389cad84b0182725c6C91dE"))
     .set("fallback", ZERO_ADDRESS);
 

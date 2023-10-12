@@ -5,10 +5,13 @@
     -   [Decentralized Subgraph](https://thegraph.com/explorer/subgraphs/5nwMCSHaTqG3Kd2gHznbTXEnZ9QNWsssQfbHhDqQSQFp?view=Overview&chain=arbitrum-one)
 -   Polygon
     -   [Hosted Subgraph](https://thegraph.com/hosted-service/subgraph/papercliplabs/compound-v3-polygon)
+    -   [Decentralized Subgraph](https://thegraph.com/explorer/subgraphs/AaFtUWKfFdj2x8nnE3RxTSJkHwGHvawH3VWFBykCGzLs?view=Overview&chain=arbitrum-one)
 -   Arbitrum
     -   [Hosted Subgraph](https://thegraph.com/hosted-service/subgraph/papercliplabs/compound-v3-arbitrum)
+    -   [Decentralized Subgraph](https://thegraph.com/explorer/subgraphs/Ff7ha9ELmpmg81D6nYxy4t8aGP26dPztqD1LDJNPqjLS?view=Overview&chain=arbitrum-one)
 -   Base
     -   [Hosted Subgraph](https://thegraph.com/hosted-service/subgraph/papercliplabs/compound-v3-base)
+    -   Base is not currently supported on the decentralized network
 
 Decentralized subgraphs require an API key. We provide one for the Compound Community, just ask for it in the Compound discord! Please don't abuse this, otherwise we will have to revoke it.
 
@@ -77,12 +80,12 @@ yarn deploy-base --access-token <access_token>
 Decentralized Network Deployment:
 
 ```bash
-yarn deploy-<network_name> --access-token <access_token>
-
 graph deploy --studio compound-v3-mainnet --deploy-key <deploy_key>
 graph deploy --studio compound-v3-polygon --deploy-key <deploy_key>
 graph deploy --studio compound-v3-arbitrum --deploy-key <deploy_key>
-graph deploy --studio compound-v3-base --deploy-key <deploy_key>
+
+# Base is not currently supported
+# graph deploy --studio compound-v3-base --deploy-key <deploy_key>
 ```
 
 # Validation
