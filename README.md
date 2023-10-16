@@ -26,7 +26,7 @@ Decentralized subgraphs require an API key. We provide one for the Compound Comm
 
 ```mermaid
 erDiagram
-		GOUVERNER_BRAVO ||--|| TIMELOCK : "ProposalCreated|VoteCase|ProposalCanceled|ProposalQueued|ProposalExecuted"
+		GOVERNOR_BRAVO ||--|| TIMELOCK : "ProposalCreated|VoteCase|ProposalCanceled|ProposalQueued|ProposalExecuted"
 		TIMELOCK ||--|| CONFIGURATOR_PROXY : "QueueTransaction|CancelTranscation|ExecuteTransaction"
 		CONFIGURATOR_PROXY ||--|| CONFIGURATOR : ""
 		CONFIGURATOR ||--o{ COMET_FACTORY : "SetFactory"
@@ -36,7 +36,7 @@ erDiagram
 		COMET_PROXY ||--|| COMET : ""
 		LENDER_OR_BORROWER }|--|{ COMET_PROXY : "Supply|Transfer|Withdraw|Approve"
 		LENDER_OR_BORROWER }|--|{ COMET_REWARDS : "RewardClaimed"
-		GOVERNANCE_PARTICIPANT }|--|| GOUVERNER_BRAVO : "Create|Vote|Cancel|Queue|Execute"
+		GOVERNANCE_PARTICIPANT }|--|| GOVERNOR_BRAVO : "Create|Vote|Cancel|Queue|Execute"
 		LIQUIDATOR }|--|{ COMET_PROXY : "Absorb|BuyCollatoral"
 		COMET }|--|{ PRICE_FEED : ""
 ```
