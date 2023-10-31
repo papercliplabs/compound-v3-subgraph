@@ -19,8 +19,11 @@ import {
     WithdrawReservesInteraction,
 } from "../../generated/schema";
 import { getOrCreateMarketConfiguration } from "./market";
-import { getOrCreateBaseToken, getOrCreateToken, getTokenPriceUsd } from "./token";
+import { getOrCreateToken, getTokenPriceUsd } from "./token";
 import { computeTokenValueUsd } from "../common/utils";
+import { ChainlinkPriceFeed as ChainlinkPriceFeedContract } from "../../generated/templates/Comet/ChainlinkPriceFeed";
+import { getChainlinkEthUsdPriceFeedAddress } from "../common/networkSpecific";
+import { PRICE_FEED_FACTOR } from "../common/constants";
 
 function getOrCreateTransaction(event: ethereum.Event): Transaction {
     const id = event.transaction.hash;
@@ -38,7 +41,30 @@ function getOrCreateTransaction(event: ethereum.Event): Transaction {
 
         transaction.gasLimit = event.transaction.gasLimit;
         transaction.gasPrice = event.transaction.gasPrice;
-        transaction.gasUsed = event.receipt ? event.receipt!.gasUsed : null;
+
+        transaction.supplyBaseInteractionCount = 0;
+        transaction.withdrawBaseInteractionCount = 0;
+        transaction.absorbDebtInteractionCount = 0;
+        transaction.supplyCollateralInteractionCount = 0;
+        transaction.withdrawCollateralInteractionCount = 0;
+        transaction.transferCollateralInteractionCount = 0;
+        transaction.absorbCollateralInteractionCount = 0;
+        transaction.buyCollateralInteractionCount = 0;
+        transaction.withdrawReservesInteractionCount = 0;
+        transaction.claimRewardsInteractionCount = 0;
+
+        // event.receipt doesn't exist for older graph nodes and some chains, these are allows to be null in schema
+        if (event.receipt) {
+            const gasUsed = event.receipt!.gasUsed;
+            transaction.gasUsed = gasUsed;
+
+            const priceFeed = ChainlinkPriceFeedContract.bind(getChainlinkEthUsdPriceFeedAddress());
+            const tryLatestRoundData = priceFeed.try_latestRoundData();
+            if (!tryLatestRoundData.reverted) {
+                const price = tryLatestRoundData.value.value1.toBigDecimal().div(PRICE_FEED_FACTOR);
+                transaction.gasUsedUsd = computeTokenValueUsd(gasUsed.times(transaction.gasPrice), 18, price);
+            }
+        }
 
         transaction.save();
     }
@@ -73,6 +99,10 @@ export function createSupplyBaseInteraction(
     interaction.amountUsd = computeTokenValueUsd(amount, u8(token.decimals), tokenPrice);
 
     interaction.save();
+
+    // Update transaction count
+    transaction.supplyBaseInteractionCount += 1;
+    transaction.save();
 }
 
 export function createWithdrawBaseInteraction(
@@ -102,6 +132,10 @@ export function createWithdrawBaseInteraction(
     interaction.amountUsd = computeTokenValueUsd(amount, u8(token.decimals), tokenPrice);
 
     interaction.save();
+
+    // Update transaction count
+    transaction.withdrawBaseInteractionCount += 1;
+    transaction.save();
 }
 
 export function createAbsorbDebtInteraction(
@@ -131,6 +165,10 @@ export function createAbsorbDebtInteraction(
     interaction.amountUsd = computeTokenValueUsd(amount, u8(token.decimals), tokenPrice);
 
     interaction.save();
+
+    // Update transaction count
+    transaction.absorbDebtInteractionCount += 1;
+    transaction.save();
 }
 
 export function createSupplyCollateralInteraction(
@@ -159,6 +197,10 @@ export function createSupplyCollateralInteraction(
     interaction.amountUsd = computeTokenValueUsd(amount, u8(token.decimals), tokenPrice);
 
     interaction.save();
+
+    // Update transaction count
+    transaction.supplyCollateralInteractionCount += 1;
+    transaction.save();
 }
 
 export function createWithdrawCollateralInteraction(
@@ -187,6 +229,10 @@ export function createWithdrawCollateralInteraction(
     interaction.amountUsd = computeTokenValueUsd(amount, u8(token.decimals), tokenPrice);
 
     interaction.save();
+
+    // Update transaction count
+    transaction.withdrawCollateralInteractionCount += 1;
+    transaction.save();
 }
 
 export function createTransferCollateralInteraction(
@@ -215,6 +261,10 @@ export function createTransferCollateralInteraction(
     interaction.amountUsd = computeTokenValueUsd(amount, u8(token.decimals), tokenPrice);
 
     interaction.save();
+
+    // Update transaction count
+    transaction.transferCollateralInteractionCount += 1;
+    transaction.save();
 }
 
 export function createAbsorbCollateralInteraction(
@@ -243,6 +293,10 @@ export function createAbsorbCollateralInteraction(
     interaction.amountUsd = computeTokenValueUsd(amount, u8(token.decimals), tokenPrice);
 
     interaction.save();
+
+    // Update transaction count
+    transaction.absorbCollateralInteractionCount += 1;
+    transaction.save();
 }
 
 export function createBuyCollateralInteraction(
@@ -285,6 +339,10 @@ export function createBuyCollateralInteraction(
     );
 
     interaction.save();
+
+    // Update transaction count
+    transaction.buyCollateralInteractionCount += 1;
+    transaction.save();
 }
 
 export function createWithdrawReservesInteraction(
@@ -311,6 +369,10 @@ export function createWithdrawReservesInteraction(
     interaction.amountUsd = computeTokenValueUsd(amount, u8(token.decimals), tokenPrice);
 
     interaction.save();
+
+    // Update transaction count
+    transaction.withdrawReservesInteractionCount += 1;
+    transaction.save();
 }
 
 export function createClaimRewardsInteraction(
@@ -336,4 +398,8 @@ export function createClaimRewardsInteraction(
     interaction.amountUsd = computeTokenValueUsd(amount, u8(u8(token.decimals)), tokenPrice);
 
     interaction.save();
+
+    // Update transaction count
+    transaction.claimRewardsInteractionCount += 1;
+    transaction.save();
 }

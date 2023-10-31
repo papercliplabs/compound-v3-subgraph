@@ -24,6 +24,7 @@ import {
     SECONDS_PER_YEAR,
     ZERO_ADDRESS,
     ZERO_BD,
+    ZERO_BI,
 } from "../common/constants";
 import { bigDecimalSafeDiv, computeTokenValueUsd, formatUnits, getRewardConfigData } from "../common/utils";
 import {
@@ -154,6 +155,9 @@ export function getOrCreateMarketAccounting(market: Market, event: ethereum.Even
     if (!accounting) {
         accounting = new MarketAccounting(id);
 
+        // Set here to solve init issue, since we optimize to not update when block number didn't change
+        accounting.lastAccountingUpdatedBlockNumber = ZERO_BI;
+
         updateMarketAccounting(market, accounting, event);
 
         accounting.save();
@@ -163,6 +167,11 @@ export function getOrCreateMarketAccounting(market: Market, event: ethereum.Even
 }
 
 export function updateMarketAccounting(market: Market, accounting: MarketAccounting, event: ethereum.Event): void {
+    if (accounting.lastAccountingUpdatedBlockNumber.equals(event.block.number)) {
+        // Don't bother to update if we already did this block, assume this gets set on init
+        return;
+    }
+
     const comet = CometContract.bind(Address.fromBytes(market.id));
     const configuration = getOrCreateMarketConfiguration(market, event);
 

@@ -37,7 +37,7 @@ type Protocol @entity {
     weeklyProtocolAccounting: [WeeklyProtocolAccounting!]! @derivedFrom(field: "protocol")
 }
 
-type Market @entity {
+type Market @entity(immutable: true) {
     "Comet proxy address"
     id: Bytes!
     "Comet proxy address"
@@ -79,6 +79,10 @@ type Market @entity {
     transferCollateralInteractions: [TransferCollateralInteraction!]! @derivedFrom(field: "market")
     "All interactions where a collateral asset was absorbed by the market during a liquidation"
     absorbCollateralInteractions: [AbsorbCollateralInteraction!]! @derivedFrom(field: "market")
+    "All interactions where a collateral asset was bought using base assets in this market"
+    buyCollateralInteractions: [BuyCollateralInteraction!]! @derivedFrom(field: "market")
+    "All interactions where reserves were withdrawn from this market"
+    withdrawReservesInteractions: [WithdrawReservesInteraction!]! @derivedFrom(field: "market")
 
     "Historical snapshots of hourly market usage"
     hourlyUsage: [MarketHourlyUsage!]! @derivedFrom(field: "market")
@@ -96,7 +100,7 @@ type Market @entity {
     weeklyMarketAccounting: [WeeklyMarketAccounting!]! @derivedFrom(field: "market")
 }
 
-type Position @entity {
+type Position @entity(immutable: true) {
     "Market proxy address + owner address"
     id: Bytes!
     "Block number the position was created"
@@ -706,6 +710,44 @@ type Transaction @entity(immutable: true) {
     gasPrice: BigInt!
     "Amount of gas used"
     gasUsed: BigInt
+    "Amount of gas used in USD"
+    gasUsedUsd: BigDecimal
+
+    # Counts which can be used for filtering on
+    supplyBaseInteractionCount: Int!
+    withdrawBaseInteractionCount: Int!
+    absorbDebtInteractionCount: Int!
+    supplyCollateralInteractionCount: Int!
+    withdrawCollateralInteractionCount: Int!
+    transferCollateralInteractionCount: Int!
+    absorbCollateralInteractionCount: Int!
+    buyCollateralInteractionCount: Int!
+    withdrawReservesInteractionCount: Int!
+    claimRewardsInteractionCount: Int!
+
+    ####
+    # Derived
+    ####
+    "All supply base interaction that were part of this transaction"
+    supplyBaseInteractions: [SupplyBaseInteraction!]! @derivedFrom(field: "transaction")
+    "All withdraw base interaction that were part of this transaction"
+    withdrawBaseInteractions: [WithdrawBaseInteraction!]! @derivedFrom(field: "transaction")
+    "All absorb debt interaction that were part of this transaction"
+    absorbDebtInteractions: [AbsorbDebtInteraction!]! @derivedFrom(field: "transaction")
+    "All supply collateral interaction that were part of this transaction"
+    supplyCollateralInteractions: [SupplyCollateralInteraction!]! @derivedFrom(field: "transaction")
+    "All withdraw collateral interaction that were part of this transaction"
+    withdrawCollateralInteractions: [WithdrawCollateralInteraction!]! @derivedFrom(field: "transaction")
+    "All transfer collateral interaction that were part of this transaction"
+    transferCollateralInteractions: [TransferCollateralInteraction!]! @derivedFrom(field: "transaction")
+    "All absorb collateral interaction that were part of this transaction"
+    absorbCollateralInteractions: [AbsorbCollateralInteraction!]! @derivedFrom(field: "transaction")
+    "All buy collateral interaction that were part of this transaction"
+    buyCollateralInteractions: [BuyCollateralInteraction!]! @derivedFrom(field: "transaction")
+    "All withdraw reserves interaction that were part of this transaction"
+    withdrawReservesInteractions: [WithdrawReservesInteraction!]! @derivedFrom(field: "transaction")
+    "All claim rewards interaction that were part of this transaction"
+    claimRewardsInteractions: [ClaimRewardsInteraction!]! @derivedFrom(field: "transaction")
 }
 
 type SupplyBaseInteraction @entity(immutable: true) {

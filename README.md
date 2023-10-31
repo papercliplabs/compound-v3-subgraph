@@ -59,33 +59,56 @@ Build:
 
 ```bash
 yarn build --network <network_name>
-
-yarn build --network mainnet
-yarn build --network matic
-yarn build --network arbitrum-one
-yarn build --network base
 ```
+
+Where <network_name> in [mainnet, matic, arbitrum-one, base]
 
 Hosted Network Deployment:
 
 ```bash
-yarn deploy-<network_name> --access-token <access_token>
-
-yarn deploy-mainnet --access-token <access_token>
-yarn deploy-matic --access-token <access_token>
-yarn deploy-arbitrum-one --access-token <access_token>
-yarn deploy-base --access-token <access_token>
+source .env
+yarn deploy --product hosted-service papercliplabs/<subgraph_name> --access-token $ACCESS_TOKEN
 ```
+
+Note: you will need to create the .env file from .env.example
 
 Decentralized Network Deployment:
 
 ```bash
-graph deploy --studio compound-v3-mainnet --deploy-key <deploy_key>
-graph deploy --studio compound-v3-polygon --deploy-key <deploy_key>
-graph deploy --studio compound-v3-arbitrum --deploy-key <deploy_key>
+source .env
+graph deploy --studio <subgraph_name> --deploy-key $DEPLOY_KEY
+```
 
-# Base is not currently supported
-# graph deploy --studio compound-v3-base --deploy-key <deploy_key>
+Hosted network autogen, build, and deploy:
+
+```bash
+# Mainnet
+source .env; yarn codegen; yarn build --network mainnet; yarn deploy --product hosted-service papercliplabs/compound-v3-mainnet --access-token $ACCESS_TOKEN
+
+# Polygon
+source .env; yarn codegen; yarn build --network matic; yarn deploy --product hosted-service papercliplabs/compound-v3-polygon --access-token $ACCESS_TOKEN
+
+# Abritrum
+source .env; yarn codegen; yarn build --network arbitrum-one; yarn deploy --product hosted-service papercliplabs/compound-v3-arbitrum --access-token $ACCESS_TOKEN
+
+# Base
+source .env; yarn codegen; yarn build --network base; yarn deploy --product hosted-service papercliplabs/compound-v3-base --access-token $ACCESS_TOKEN
+```
+
+Decentralized network autogen, build, and deploy:
+
+```bash
+# Mainnet
+source .env; yarn codegen; yarn build --network mainnet; graph deploy --studio compound-v3-mainnet --deploy-key $DEPLOY_KEY
+
+# Polygon
+source .env; yarn codegen; yarn build --network matic; graph deploy --studio compound-v3-polygon --deploy-key $DEPLOY_KEY
+
+# Arbitrum
+source .env; yarn codegen; yarn build --network arbitrum-one; graph deploy --studio compound-v3-arbitrum --deploy-key $DEPLOY_KEY
+
+# Base - not yet supported on decentralized network
+source .env; yarn codegen; yarn build --network base; graph deploy --studio compound-v3-base --deploy-key $DEPLOY_KEY
 ```
 
 # Validation
