@@ -38,5 +38,15 @@
             "address": "0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1",
             "startBlock": 2197594
         }
+    },
+    "goerli": {
+        "Configurator": {
+            "address": "0xB28495db3eC65A0e3558F040BC4f98A0d588Ae60",
+            "startBlock": 7629624
+        },
+        "CometRewards": {
+            "address": "0xef9e070044d62C38D2e316146dDe92AD02CF2c2c",
+            "startBlock": 7593002
+        }
     }
 }
