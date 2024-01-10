@@ -3,3 +3,4 @@ generated
 .vscode
 build
 .env
+.hypothesis

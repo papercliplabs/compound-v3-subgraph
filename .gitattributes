@@ -1,0 +1,2 @@
+# Ignore jupyter nodebooks from repo language
+*.ipynb -linguist-detectable
