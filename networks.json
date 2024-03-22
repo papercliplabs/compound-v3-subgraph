@@ -48,5 +48,15 @@
             "address": "0xef9e070044d62C38D2e316146dDe92AD02CF2c2c",
             "startBlock": 7593002
         }
+    },
+    "sepolia": {
+        "Configurator": {
+            "address": "0xc28aD44975C614EaBe0Ed090207314549e1c6624",
+            "startBlock": 5343451
+        },
+        "CometRewards": {
+            "address": "0x91663d91795049C3D4afC85A7d0AdB15238750aa",
+            "startBlock": 5343447
+        }
     }
 }

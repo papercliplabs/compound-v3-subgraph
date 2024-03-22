@@ -14,7 +14,10 @@
     -   [Decentralized Subgraph](https://thegraph.com/explorer/subgraphs/2hcXhs36pTBDVUmk5K2Zkr6N4UYGwaHuco2a6jyTsijo?view=Overview&chain=arbitrum-one)
 -   Goerli
     -   [Hosted Subgraph](https://thegraph.com/hosted-service/subgraph/papercliplabs/compound-v3-goerli)
-	-   Decentralized is not supported
+	-   Decentralized is not supported (depreciated)
+-   Sepolia
+    -   [Hosted Subgraph](https://thegraph.com/hosted-service/subgraph/papercliplabs/compound-v3-sepolia)
+	-   [Decentralized Subgraph](https://thegraph.com/explorer/subgraphs/HZKpJGBKpiBhKBqQuWAiR1xCAPhrsrmGYWpQavi23DR1?view=Overview&chain=arbitrum-one)
 
 Decentralized subgraphs require an API key. We provide one for the Compound Community, just ask for it in the Compound discord! Please don't abuse this, otherwise we will have to revoke it.
 

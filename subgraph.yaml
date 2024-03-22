@@ -4,11 +4,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: Configurator
-    network: goerli
+    network: sepolia
     source:
       abi: Configurator
-      address: "0xB28495db3eC65A0e3558F040BC4f98A0d588Ae60"
-      startBlock: 7629624
+      address: "0xc28aD44975C614EaBe0Ed090207314549e1c6624"
+      startBlock: 5343451
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -25,11 +25,11 @@ dataSources:
       file: ./src/mappings/configurator.ts
   - kind: ethereum
     name: CometRewards
-    network: goerli
+    network: sepolia
     source:
       abi: CometRewards
-      address: "0xef9e070044d62C38D2e316146dDe92AD02CF2c2c"
-      startBlock: 7593002
+      address: "0x91663d91795049C3D4afC85A7d0AdB15238750aa"
+      startBlock: 5343447
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -53,7 +53,7 @@ dataSources:
 templates:
   - kind: ethereum
     name: Comet
-    network: goerli
+    network: sepolia
     source:
       abi: Comet
     mapping:
