@@ -27,9 +27,9 @@
         "auto-deploy:base": "yarn codegen; yarn build:base; yarn deploy-hosted:base; yarn deploy-studio:base --version-label $1",
         "auto-deploy:goerli": "yarn codegen; yarn build:goerli; yarn deploy-hosted:goerli; yarn deploy-studio:goerli --version-label $1",
         "auto-deploy:sepolia": "yarn codegen; yarn build:sepolia; yarn deploy-hosted:sepolia; yarn deploy-studio:sepolia --version-label $1",
-        "create-local": "graph create --node http://localhost:8020/ papercliplabs/compound-v3",
-        "remove-local": "graph remove --node http://localhost:8020/ papercliplabs/compound-v3",
-        "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 papercliplabs/compound-v3",
+        "create-local": "source .env; graph create --node http://${LOCAL_NODE_IP}:8020/ papercliplabs/compound-v3-local",
+        "remove-local": "source .env; graph remove --node http://${LOCAL_NODE_IP}:8020/ papercliplabs/compound-v3-local",
+        "deploy-local": "source .env; graph deploy --node http://${LOCAL_NODE_IP}:8020/ --ipfs http://${LOCAL_NODE_IP}:5001 papercliplabs/compound-v3-local --output-dir=build/mainnet --version-label v0",
         "test": "graph test"
     },
     "dependencies": {
@@ -39,6 +39,7 @@
     "devDependencies": {
         "@types/node": "^20.8.3",
         "matchstick-as": "0.5.0",
+        "prettier": "^3.2.5",
         "ts-node": "^10.9.1",
         "tslib": "^2.6.2",
         "typescript": "^5.2.2"

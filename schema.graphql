@@ -60,8 +60,8 @@ type Market @entity(immutable: true) {
     # Derived
     ####
 
-    "Current collateral balances of this market"
-    collateralBalances: [MarketCollateralBalance!]! @derivedFrom(field: "market")
+    "DEPRECIATED (moved into MarketAccounting): Current collateral balances of this market"
+    collateralBalances: [MarketCollateralBalance!]! @derivedFrom(field: "market") @deprecated(reason: "Moved into MarketAccounting")
     "Current positions in this market"
     positions: [Position!]! @derivedFrom(field: "market")
 
@@ -117,8 +117,8 @@ type Position @entity(immutable: true) {
     # Derived
     ####
 
-    "Current collateral balances of this position"
-    collateralBalances: [PositionCollateralBalance!]! @derivedFrom(field: "position")
+    "DEPRECIATED (moved into PositionAccounting): Current collateral balances of this position"
+    collateralBalances: [PositionCollateralBalance!]! @derivedFrom(field: "position") @deprecated(reason: "Moved into PositionAccounting")
 
     "All interactions where the base asset was supplied to this position, including those repaying loans"
     supplyBaseInteractions: [SupplyBaseInteraction!]! @derivedFrom(field: "position")
@@ -288,6 +288,9 @@ type MarketAccounting @entity {
     "Total amount of base borrowed from the market (present value)"
     totalBaseBorrow: BigInt!
 
+    "Collateral balances of the market"
+    collateralBalances: [MarketCollateralBalance!]!
+
     "Total amount of base supplied to the market in USD"
     totalBaseSupplyUsd: BigDecimal!
     "Total amount of base borrowed from the market in USD"
@@ -343,6 +346,19 @@ type PositionAccounting @entity {
     baseBalanceUsd: BigDecimal!
     "Collateral balance of the position in USD"
     collateralBalanceUsd: BigDecimal!
+
+    "Collateral balances"
+    collateralBalances: [PositionCollateralBalance!]!
+
+    "Cumulative base token supplied"
+    cumulativeBaseSupplied: BigInt!
+    "Cumulative base token withdrawn"
+    cumulativeBaseWithdrawn: BigInt!
+
+    "Cumulative base token supplied in USD (prices from the day of the supply)"
+    cumulativeBaseSuppliedUsd: BigDecimal!
+    "Cumulative base token withdrawn in USD (prices from the day of the withdraw)"
+    cumulativeBaseWithdrawnUsd: BigDecimal!
 }
 
 ####
@@ -364,6 +380,8 @@ type Usage @entity {
     supplyBaseCount: BigInt!
     "Number of base withdraw interactions"
     withdrawBaseCount: BigInt!
+    "Number of base transfer interactions"
+    transferBaseCount: BigInt!
     "Number of liquidation interactions"
     liquidationCount: BigInt!
     "Number of supply collateral interactions"
@@ -716,6 +734,7 @@ type Transaction @entity(immutable: true) {
     # Counts which can be used for filtering on
     supplyBaseInteractionCount: Int!
     withdrawBaseInteractionCount: Int!
+    transferBaseInteractionCount: Int!
     absorbDebtInteractionCount: Int!
     supplyCollateralInteractionCount: Int!
     withdrawCollateralInteractionCount: Int!
@@ -789,6 +808,25 @@ type WithdrawBaseInteraction @entity(immutable: true) {
     "Amount being withdrawn"
     amount: BigInt!
     "Amount being withdrawn in USD"
+    amountUsd: BigDecimal!
+}
+
+type TransferBaseInteraction @entity(immutable: true) {
+    "Transaction ID + event log index"
+    id: Bytes!
+    "Transaction this interaction is part of"
+    transaction: Transaction!
+
+    "Market the interaction is with"
+    market: Market!
+    "Position the transfer involves, note all transfers are either mint or burns"
+    position: Position!
+
+    "Asset being transferred"
+    asset: BaseToken!
+    "Amount being transferred, position for position balance increase (supply), negative for decrease (withdraw)"
+    amount: BigInt!
+    "Amount being transferred in USD"
     amountUsd: BigDecimal!
 }
 

@@ -34,6 +34,7 @@ import {
     createAbsorbCollateralInteraction,
     createBuyCollateralInteraction,
     createWithdrawReservesInteraction,
+    createTransferBaseInteraction,
 } from "../mappingHelpers/interaction";
 import {
     getOrCreateMarketCollateralBalance,
@@ -42,8 +43,9 @@ import {
     updatePositionCollateralBalance,
 } from "../mappingHelpers/collateralBalance";
 import { getOrCreateCollateralToken, getOrCreateToken } from "../mappingHelpers/token";
-import { InteractionType } from "../common/constants";
+import { InteractionType, ZERO_ADDRESS, ZERO_BI } from "../common/constants";
 import { updateUsageMetrics } from "../mappingHelpers/usage";
+import { bigIntMax, bigIntMin, logsContainWithdrawOrSupplyEvents, presentValue } from "../common/utils";
 
 export function handleUpgraded(event: UpgradedEvent): void {
     // Create market if not yet made
@@ -70,13 +72,18 @@ export function handleSupply(event: SupplyEvent): void {
     const positionAccounting = getOrCreatePositionAccounting(position, event);
 
     updateMarketAccounting(market, marketAccounting, event);
-    updatePositionAccounting(position, positionAccounting, event);
 
-    createSupplyBaseInteraction(market, position, from, amount, event);
+    const supplyBaseInteraction = createSupplyBaseInteraction(market, position, from, amount, event);
+
+    // Update position accounting
+    updatePositionAccounting(position, positionAccounting, event);
+    positionAccounting.cumulativeBaseSupplied = positionAccounting.cumulativeBaseSupplied.plus(supplyBaseInteraction.amount);
+    positionAccounting.cumulativeBaseSuppliedUsd = positionAccounting.cumulativeBaseSuppliedUsd.plus(supplyBaseInteraction.amountUsd);
+
     updateUsageMetrics(account, market, InteractionType.SUPPLY_BASE, event);
 
-    marketAccounting.save();
     positionAccounting.save();
+    marketAccounting.save();
 }
 
 export function handleWithdraw(event: WithdrawEvent): void {
@@ -91,13 +98,18 @@ export function handleWithdraw(event: WithdrawEvent): void {
     const positionAccounting = getOrCreatePositionAccounting(position, event);
 
     updateMarketAccounting(market, marketAccounting, event);
-    updatePositionAccounting(position, positionAccounting, event);
 
-    createWithdrawBaseInteraction(market, position, destination, amount, event);
+    const interaction = createWithdrawBaseInteraction(market, position, destination, amount, event);
+
+    // Update position cumulatives
+    updatePositionAccounting(position, positionAccounting, event);
+    positionAccounting.cumulativeBaseWithdrawn = positionAccounting.cumulativeBaseWithdrawn.plus(interaction.amount);
+    positionAccounting.cumulativeBaseWithdrawnUsd = positionAccounting.cumulativeBaseWithdrawnUsd.plus(interaction.amountUsd);
+
     updateUsageMetrics(account, market, InteractionType.WITHDRAW_BASE, event);
 
-    marketAccounting.save();
     positionAccounting.save();
+    marketAccounting.save();
 }
 
 export function handleAbsorbDebt(event: AbsorbDebtEvent): void {
@@ -286,11 +298,70 @@ export function handleWithdrawReserves(event: WithdrawReservesEvent): void {
 }
 
 export function handleTransfer(event: TransferEvent): void {
+    if(logsContainWithdrawOrSupplyEvents(event)) {
+        // Ignore any transfers when there is supply or withdraw events
+        return;
+    }
+
+    const transferFromAddress = event.params.from;
+    const transferToAddress = event.params.to;
+
     const market = getOrCreateMarket(event.address, event);
     const marketAccounting = getOrCreateMarketAccounting(market, event);
 
     updateMarketAccounting(market, marketAccounting, event);
-    // Don't track transfers for usage because they can come from all types of base interactions
+
+    // Transfers are only ever burn or mint (never actually between accounts)
+    if(transferFromAddress.notEqual(ZERO_ADDRESS)) {
+        const fromAccount = getOrCreateAccount(transferFromAddress, event);
+        const fromPosition = getOrCreatePosition(market, fromAccount, event);
+        const fromPositionAccounting = getOrCreatePositionAccounting(fromPosition, event);
+
+        const basePrincipalBefore = fromPositionAccounting.basePrincipal;
+        updatePositionAccounting(fromPosition, fromPositionAccounting, event);
+        const basePrincipalAfter = fromPositionAccounting.basePrincipal;
+
+        const withdrawPrincipal = basePrincipalBefore.gt(ZERO_BI) ? basePrincipalBefore.minus(bigIntMax(basePrincipalAfter, ZERO_BI)) : ZERO_BI; 
+        const borrowPrincipal = basePrincipalAfter.lt(ZERO_BI) ? bigIntMin(basePrincipalBefore, ZERO_BI).minus(basePrincipalAfter) : ZERO_BI; 
+
+        const withdrawBase = presentValue(withdrawPrincipal, marketAccounting.baseSupplyIndex);
+        const borrowBase = presentValue(borrowPrincipal, marketAccounting.baseBorrowIndex);
+        const totalBaseWithdraw = withdrawBase.plus(borrowBase);
+
+        const interaction = createTransferBaseInteraction(market, fromPosition, totalBaseWithdraw.neg(), event);
+
+        fromPositionAccounting.cumulativeBaseWithdrawn = fromPositionAccounting.cumulativeBaseWithdrawn.minus(interaction.amount); // Double negative here
+        fromPositionAccounting.cumulativeBaseWithdrawnUsd = fromPositionAccounting.cumulativeBaseWithdrawnUsd.minus(interaction.amountUsd); // Double negative here
+
+        fromPositionAccounting.save();
+
+        updateUsageMetrics(fromAccount, market, InteractionType.TRANSFER_BASE, event);
+    } else {
+        const toAccount = getOrCreateAccount(transferToAddress, event);
+        const toPosition = getOrCreatePosition(market, toAccount, event);
+        const toPositionAccounting = getOrCreatePositionAccounting(toPosition, event);
+
+        const basePrincipalBefore = toPositionAccounting.basePrincipal;
+        updatePositionAccounting(toPosition, toPositionAccounting, event);
+        const basePrincipalAfter = toPositionAccounting.basePrincipal;
+
+        const supplyPrincipal = basePrincipalAfter.gt(ZERO_BI) ? basePrincipalAfter.minus(bigIntMax(basePrincipalBefore, ZERO_BI)) : ZERO_BI; 
+        const repayPrincipal = basePrincipalBefore.lt(ZERO_BI) ? bigIntMin(basePrincipalAfter, ZERO_BI).minus(basePrincipalBefore) : ZERO_BI; 
+
+        const supplyBase = presentValue(supplyPrincipal, marketAccounting.baseSupplyIndex);
+        const repayBase = presentValue(repayPrincipal, marketAccounting.baseBorrowIndex);
+        const totalBaseSupply = supplyBase.plus(repayBase);
+
+        const interaction = createTransferBaseInteraction(market, toPosition, totalBaseSupply, event);
+
+        toPositionAccounting.cumulativeBaseSupplied = toPositionAccounting.cumulativeBaseSupplied.plus(interaction.amount); 
+        toPositionAccounting.cumulativeBaseSuppliedUsd = toPositionAccounting.cumulativeBaseSuppliedUsd.plus(interaction.amountUsd); 
+
+        toPositionAccounting.save();
+
+        updateUsageMetrics(toAccount, market, InteractionType.TRANSFER_BASE, event);
+    }
+
 
     marketAccounting.save();
 }

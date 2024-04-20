@@ -1,4 +1,4 @@
-import { Address, BigDecimal, BigInt } from "@graphprotocol/graph-ts";
+import { Address, BigDecimal, BigInt, ByteArray, crypto} from "@graphprotocol/graph-ts";
 
 export const ZERO_ADDRESS = Address.fromString("0x0000000000000000000000000000000000000000");
 
@@ -23,8 +23,12 @@ export const PRICE_FEED_FACTOR: BigDecimal = BigDecimal.fromString("100000000");
 export namespace InteractionType {
     export const SUPPLY_BASE = "SUPPLY_BASE";
     export const WITHDRAW_BASE = "WITHDRAW_BASE";
+    export const TRANSFER_BASE = "TRANSFER_BASE";
     export const LIQUIDATION = "LIQUIDATION";
     export const SUPPLY_COLLATERAL = "SUPPLY_COLLATERAL";
     export const WITHDRAW_COLLATERAL = "WITHDRAW_COLLATERAL";
     export const TRANSFER_COLLATERAL = "TRANSFER_COLLATERAL_TO";
 }
+
+export const SUPPLY_EVENT_SIGNATURE = crypto.keccak256(ByteArray.fromUTF8("Supply(address,address,uint256)"));;
+export const WITHDRAW_EVENT_SIGNATURE = crypto.keccak256(ByteArray.fromUTF8("Withdraw(address,address,uint256)"));;

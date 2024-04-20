@@ -10,6 +10,7 @@ import {
     BaseToken,
     SupplyBaseInteraction,
     WithdrawBaseInteraction,
+    TransferBaseInteraction,
     AbsorbDebtInteraction,
     SupplyCollateralInteraction,
     WithdrawCollateralInteraction,
@@ -23,7 +24,8 @@ import { getOrCreateToken, getTokenPriceUsd } from "./token";
 import { computeTokenValueUsd } from "../common/utils";
 import { ChainlinkPriceFeed as ChainlinkPriceFeedContract } from "../../generated/templates/Comet/ChainlinkPriceFeed";
 import { getChainlinkEthUsdPriceFeedAddress } from "../common/networkSpecific";
-import { PRICE_FEED_FACTOR } from "../common/constants";
+import { PRICE_FEED_FACTOR, ZERO_BI } from "../common/constants";
+import { getOrCreatePositionAccounting } from "./position";
 
 function getOrCreateTransaction(event: ethereum.Event): Transaction {
     const id = event.transaction.hash;
@@ -44,6 +46,7 @@ function getOrCreateTransaction(event: ethereum.Event): Transaction {
 
         transaction.supplyBaseInteractionCount = 0;
         transaction.withdrawBaseInteractionCount = 0;
+        transaction.transferBaseInteractionCount = 0;
         transaction.absorbDebtInteractionCount = 0;
         transaction.supplyCollateralInteractionCount = 0;
         transaction.withdrawCollateralInteractionCount = 0;
@@ -78,7 +81,7 @@ export function createSupplyBaseInteraction(
     supplier: Address,
     amount: BigInt,
     event: ethereum.Event
-): void {
+): SupplyBaseInteraction {
     const transaction = getOrCreateTransaction(event);
     const marketConfiguration = getOrCreateMarketConfiguration(market, event);
     const baseToken = BaseToken.load(marketConfiguration.baseToken)!;
@@ -103,6 +106,8 @@ export function createSupplyBaseInteraction(
     // Update transaction count
     transaction.supplyBaseInteractionCount += 1;
     transaction.save();
+    
+    return interaction;
 }
 
 export function createWithdrawBaseInteraction(
@@ -111,7 +116,7 @@ export function createWithdrawBaseInteraction(
     destination: Address,
     amount: BigInt,
     event: ethereum.Event
-): void {
+): WithdrawBaseInteraction {
     const transaction = getOrCreateTransaction(event);
     const marketConfiguration = getOrCreateMarketConfiguration(market, event);
     const baseToken = BaseToken.load(marketConfiguration.baseToken)!;
@@ -136,6 +141,41 @@ export function createWithdrawBaseInteraction(
     // Update transaction count
     transaction.withdrawBaseInteractionCount += 1;
     transaction.save();
+
+    return interaction;
+}
+
+export function createTransferBaseInteraction(
+    market: Market,
+    position: Position,
+    amount: BigInt,
+    event: ethereum.Event
+): TransferBaseInteraction {
+    const transaction = getOrCreateTransaction(event);
+    const marketConfiguration = getOrCreateMarketConfiguration(market, event);
+    const baseToken = BaseToken.load(marketConfiguration.baseToken)!;
+    const token = getOrCreateToken(Address.fromBytes(baseToken.token), event);
+    const tokenPrice = getTokenPriceUsd(baseToken, event);
+    const id = transaction.id.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
+
+    const interaction = new TransferBaseInteraction(id);
+
+    interaction.transaction = transaction.id;
+
+    interaction.market = market.id;
+    interaction.position = position.id;
+
+    interaction.asset = marketConfiguration.baseToken;
+    interaction.amount = amount;
+    interaction.amountUsd = computeTokenValueUsd(amount, u8(token.decimals), tokenPrice);
+
+    interaction.save();
+
+    // Update transaction count
+    transaction.transferBaseInteractionCount += 1;
+    transaction.save();
+
+    return interaction;
 }
 
 export function createAbsorbDebtInteraction(

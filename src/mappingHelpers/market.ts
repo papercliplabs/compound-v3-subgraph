@@ -6,6 +6,7 @@ import {
     HourlyMarketAccounting,
     Market,
     MarketAccounting,
+    MarketCollateralBalance,
     MarketConfiguration,
     MarketConfigurationSnapshot,
     Token,
@@ -36,7 +37,7 @@ import {
     updateCollateralTokenConfig,
 } from "./token";
 import { getOrCreateUsage } from "./usage";
-import { getOrCreateMarketCollateralBalance, updateMarketCollateralBalanceUsd } from "./collateralBalance";
+import { createMarketCollateralBalanceSnapshot, getOrCreateMarketCollateralBalance, updateMarketCollateralBalanceUsd } from "./collateralBalance";
 import { getOrCreateProtocol, getOrCreateProtocolAccounting, updateProtocolAccounting } from "./protocol";
 import { getConfiguratorProxyAddress } from "../common/networkSpecific";
 
@@ -282,17 +283,21 @@ export function updateMarketAccounting(market: Market, accounting: MarketAccount
 
     let totalCollateralBalanceUsd = ZERO_BD;
     let totalCollateralReservesUsd = ZERO_BD;
+    let collateralBalances: Bytes[] = [];
     for (let i = 0; i < collateralTokenIds.length; i++) {
         const token = CollateralToken.load(collateralTokenIds[i])!; // Guaranteed to exist
-        const tokenBalance = getOrCreateMarketCollateralBalance(token, event);
-        updateMarketCollateralBalanceUsd(tokenBalance, event);
-        tokenBalance.save();
+        const collateralBalance = getOrCreateMarketCollateralBalance(token, event);
+        updateMarketCollateralBalanceUsd(collateralBalance, event);
+        collateralBalance.save();
 
-        totalCollateralBalanceUsd = totalCollateralBalanceUsd.plus(tokenBalance.balanceUsd);
-        totalCollateralReservesUsd = totalCollateralReservesUsd.plus(tokenBalance.reservesUsd);
+        collateralBalances.push(collateralBalance.id);
+
+        totalCollateralBalanceUsd = totalCollateralBalanceUsd.plus(collateralBalance.balanceUsd);
+        totalCollateralReservesUsd = totalCollateralReservesUsd.plus(collateralBalance.reservesUsd);
     }
     accounting.collateralBalanceUsd = totalCollateralBalanceUsd;
     accounting.collateralReservesBalanceUsd = totalCollateralReservesUsd;
+    accounting.collateralBalances = collateralBalances;
 
     accounting.totalReserveBalanceUsd = accounting.baseReserveBalanceUsd.plus(accounting.collateralReservesBalanceUsd);
 
@@ -334,10 +339,21 @@ function createMarketAccountingSnapshots(accounting: MarketAccounting, event: et
 
         let entries = accounting.entries;
         for (let i = 0; i < entries.length; ++i) {
-            if (entries[i].key.toString() != "id") {
+        const key = entries[i].key.toString();
+            if (key != "id" && key != "collateralBalances") {
                 copiedAccounting.set(entries[i].key, entries[i].value);
             }
         }
+
+        // Copy collateral balances (needs special handling since we need to deep copy)
+        let collateralBalancesSnapshot: Bytes[] = [];
+        for(let i = 0; i < accounting.collateralBalances.length; i++) {
+            const collateralBalance = MarketCollateralBalance.load(accounting.collateralBalances[i])!; // Guaranteed to exist
+            const collateralBalanceSnapshot = createMarketCollateralBalanceSnapshot(collateralBalance, event);
+            collateralBalancesSnapshot.push(collateralBalanceSnapshot.id);
+        }
+        copiedAccounting.collateralBalances = collateralBalancesSnapshot;
+
         copiedAccounting.save();
 
         if (!hourlyAccounting) {
