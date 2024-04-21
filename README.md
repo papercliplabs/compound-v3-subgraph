@@ -18,6 +18,12 @@
 -   Sepolia
     -   [Hosted Subgraph](https://thegraph.com/hosted-service/subgraph/papercliplabs/compound-v3-sepolia)
 	-   [Decentralized Subgraph](https://thegraph.com/explorer/subgraphs/HZKpJGBKpiBhKBqQuWAiR1xCAPhrsrmGYWpQavi23DR1?view=Overview&chain=arbitrum-one)
+-   Optimism
+	-   TODO
+-   Scroll
+	-   TODO
+-   Base Sepolia
+	-   TODO
 
 Decentralized subgraphs require an API key. We provide one for the Compound Community, just ask for it in the Compound discord! Please don't abuse this, otherwise we will have to revoke it.
 

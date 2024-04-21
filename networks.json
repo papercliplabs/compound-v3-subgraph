@@ -58,5 +58,35 @@
             "address": "0x91663d91795049C3D4afC85A7d0AdB15238750aa",
             "startBlock": 5343447
         }
+    },
+    "optimism": {
+        "Configurator": {
+            "address": "0x84E93EC6170ED630f5ebD89A1AAE72d4F63f2713",
+            "startBlock": 118406281
+        },
+        "CometRewards": {
+            "address": "0x443EA0340cb75a160F31A440722dec7b5bc3C2E9",
+            "startBlock": 118406283
+        }
+    },
+    "scroll": {
+        "Configurator": {
+            "address": "0xECAB0bEEa3e5DEa0c35d3E69468EAC20098032D7",
+            "startBlock": 3397679
+        },
+        "CometRewards": {
+            "address": "0x70167D30964cbFDc315ECAe02441Af747bE0c5Ee",
+            "startBlock": 3397682 
+        }
+    },
+    "base-sepolia": {
+        "Configurator": {
+            "address": "0x090a2b1fc84d0b5141d5D5608b12Db19201aE5a6",
+            "startBlock": 7646652
+        },
+        "CometRewards": {
+            "address": "0x3394fa1baCC0b47dd0fF28C8573a476a161aF7BC",
+            "startBlock": 7646657  
+        }
     }
 }
