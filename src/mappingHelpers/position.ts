@@ -39,6 +39,9 @@ export function getOrCreatePositionAccounting(position: Position, event: ethereu
 
         positionAccounting.cumulativeBaseSuppliedUsd = ZERO_BD;
         positionAccounting.cumulativeBaseWithdrawnUsd = ZERO_BD;
+        positionAccounting.cumulativeCollateralLiquidatedUsd = ZERO_BD;
+        positionAccounting.cumulativeRewardsClaimed = ZERO_BI;
+        positionAccounting.cumulativeRewardsClaimedUsd = ZERO_BD;
 
         updatePositionAccounting(position, positionAccounting, event);
         positionAccounting.save();

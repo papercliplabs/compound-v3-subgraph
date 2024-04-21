@@ -27,7 +27,7 @@ dataSources:
     name: CometRewards
     network: mainnet
     source:
-      abi: CometRewards
+      abi: CometRewardsV2
       address: "0x1B0e765F6224C21223AeA2af16c1C46E38885a40"
       startBlock: 15331590
     mapping:
@@ -36,16 +36,18 @@ dataSources:
       language: wasm/assemblyscript
       entities: []
       abis:
-        - name: CometRewards
-          file: ./abis/CometRewardsV1.json
-        - name: CometRewards
-          file: ./abis/CometRewardsV2.json
-        - name: Erc20
-          file: ./abis/Erc20.json
-        - name: ChainlinkPriceFeed
-          file: ./abis/ChainlinkPriceFeed.json
         - name: Comet
           file: ./abis/Comet.json
+        - name: Configurator
+          file: ./abis/Configurator.json
+        - name: Erc20
+          file: ./abis/Erc20.json
+        - name: CometRewardsV1
+          file: ./abis/CometRewardsV1.json
+        - name: CometRewardsV2
+          file: ./abis/CometRewardsV2.json
+        - name: ChainlinkPriceFeed
+          file: ./abis/ChainlinkPriceFeed.json
       eventHandlers:
         - event: RewardClaimed(indexed address,indexed address,indexed address,uint256)
           handler: handleRewardClaimed

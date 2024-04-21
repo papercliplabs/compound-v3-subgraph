@@ -255,9 +255,11 @@ export function handleAbsorbCollateral(event: AbsorbCollateralEvent): void {
     updatePositionCollateralBalance(position, positionCollateralBalance, event);
 
     updateMarketAccounting(market, marketAccounting, event);
-    updatePositionAccounting(position, positionAccounting, event);
 
-    createAbsorbCollateralInteraction(market, position, absorber, collateralToken, amount, event);
+    const interaction = createAbsorbCollateralInteraction(market, position, absorber, collateralToken, amount, event);
+
+    updatePositionAccounting(position, positionAccounting, event);
+    positionAccounting.cumulativeCollateralLiquidatedUsd = positionAccounting.cumulativeCollateralLiquidatedUsd.plus(interaction.amountUsd);
 
     marketCollateralBalance.save();
     positionCollateralBalance.save();
@@ -337,6 +339,7 @@ export function handleTransfer(event: TransferEvent): void {
 
         updateUsageMetrics(fromAccount, market, InteractionType.TRANSFER_BASE, event);
     } else {
+        // Transfer to, or absorbInternal's base paid out from a liquidation
         const toAccount = getOrCreateAccount(transferToAddress, event);
         const toPosition = getOrCreatePosition(market, toAccount, event);
         const toPositionAccounting = getOrCreatePositionAccounting(toPosition, event);

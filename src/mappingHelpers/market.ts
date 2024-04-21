@@ -9,6 +9,7 @@ import {
     MarketCollateralBalance,
     MarketConfiguration,
     MarketConfigurationSnapshot,
+    MarketRewardConfiguration,
     Token,
     WeeklyMarketAccounting,
 } from "../../generated/schema";
@@ -39,7 +40,7 @@ import {
 import { getOrCreateUsage } from "./usage";
 import { createMarketCollateralBalanceSnapshot, getOrCreateMarketCollateralBalance, updateMarketCollateralBalanceUsd } from "./collateralBalance";
 import { getOrCreateProtocol, getOrCreateProtocolAccounting, updateProtocolAccounting } from "./protocol";
-import { getConfiguratorProxyAddress } from "../common/networkSpecific";
+import { getCometRewardAddress, getConfiguratorProxyAddress } from "../common/networkSpecific";
 
 ////
 // Market Configuration
@@ -145,6 +146,35 @@ function createMarketConfigurationSnapshot(config: MarketConfiguration, event: e
     marketConfigSnapshot.save();
 }
 
+export function getOrCreateMarketRewardConfiguration(market: Market, event: ethereum.Event): MarketRewardConfiguration {
+    const id = market.id.concat(getCometRewardAddress()); 
+    let config = MarketRewardConfiguration.load(id);
+
+    if (!config) {
+        config = new MarketRewardConfiguration(id);
+
+        const configData = getRewardConfigData(Address.fromBytes(market.id));
+        config.tokenAddress = configData.tokenAddress;
+        config.rescaleFactor = configData.rescaleFactor;
+        config.shouldUpscale = configData.shouldUpscale;
+        config.multiplier = configData.multiplier;
+        config.save();
+    } else if (config.tokenAddress.equals(ZERO_ADDRESS)) {
+        // Check for config
+        const configData = getRewardConfigData(Address.fromBytes(market.id));
+
+        if(configData.tokenAddress.notEqual(ZERO_ADDRESS)) {
+            config.tokenAddress = configData.tokenAddress;
+            config.rescaleFactor = configData.rescaleFactor;
+            config.shouldUpscale = configData.shouldUpscale;
+            config.multiplier = configData.multiplier;
+            config.save();
+        }
+    }
+
+    return config;
+} 
+
 ////
 // Market Accounting
 ////
@@ -175,10 +205,11 @@ export function updateMarketAccounting(market: Market, accounting: MarketAccount
 
     const comet = CometContract.bind(Address.fromBytes(market.id));
     const configuration = getOrCreateMarketConfiguration(market, event);
+    const rewardConfigData = getOrCreateMarketRewardConfiguration(market, event);
 
     const totalsBasic = comet.totalsBasic();
 
-    const rewardConfigData = getRewardConfigData(Address.fromBytes(market.id));
+    // const rewardConfigData = getRewardConfigData(Address.fromBytes(market.id));
 
     accounting.market = market.id;
     accounting.lastAccountingUpdatedBlockNumber = event.block.number;
@@ -233,12 +264,14 @@ export function updateMarketAccounting(market: Market, accounting: MarketAccount
         baseTokenPriceUsd
     );
 
-    if (rewardConfigData.tokenAddress == Address.zero()) {
+    if (Address.fromBytes(rewardConfigData.tokenAddress).equals(ZERO_ADDRESS)) {
         // No rewards
         accounting.rewardSupplyApr = ZERO_BD;
         accounting.rewardBorrowApr = ZERO_BD;
+
+        accounting.rewardTokenUsdPrice = ZERO_BD;
     } else {
-        const rewardToken = getOrCreateToken(rewardConfigData.tokenAddress, event);
+        const rewardToken = getOrCreateToken(Address.fromBytes(rewardConfigData.tokenAddress), event);
         const rewardMultiplier = rewardConfigData.multiplier;
 
         const supplyRewardTokensPerDay = configuration.baseTrackingSupplySpeed
@@ -276,6 +309,8 @@ export function updateMarketAccounting(market: Market, accounting: MarketAccount
 
         accounting.rewardSupplyApr = rewardSupplyYieldPerDay.times(DAYS_PER_YEAR.toBigDecimal());
         accounting.rewardBorrowApr = rewardBorrowYieldPerDay.times(DAYS_PER_YEAR.toBigDecimal());
+
+        accounting.rewardTokenUsdPrice = getTokenPriceUsd(rewardToken, event)
     }
 
     // Collateral USD balances
@@ -308,6 +343,7 @@ export function updateMarketAccounting(market: Market, accounting: MarketAccount
         accounting.totalBaseSupply.toBigDecimal(),
         accounting.totalBaseBorrow.toBigDecimal()
     );
+
 
     // Update protocol accounting whenever market accounting changes
     const protocol = getOrCreateProtocol(event);
@@ -403,6 +439,9 @@ export function getOrCreateMarket(marketId: Address, event: ethereum.Event): Mar
 
         const marketConfig = getOrCreateMarketConfiguration(market, event);
         market.configuration = marketConfig.id;
+
+        const marketRewardConfiguration = getOrCreateMarketRewardConfiguration(market, event);
+        market.rewardConfiguration = marketRewardConfiguration.id;
 
         const marketAccounting = getOrCreateMarketAccounting(market, event);
         market.accounting = marketAccounting.id;

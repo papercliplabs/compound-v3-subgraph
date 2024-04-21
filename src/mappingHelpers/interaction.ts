@@ -314,7 +314,7 @@ export function createAbsorbCollateralInteraction(
     asset: CollateralToken,
     amount: BigInt,
     event: ethereum.Event
-): void {
+): AbsorbCollateralInteraction {
     const transaction = getOrCreateTransaction(event);
     const token = getOrCreateToken(Address.fromBytes(asset.token), event);
     const tokenPrice = getTokenPriceUsd(asset, event);
@@ -337,6 +337,8 @@ export function createAbsorbCollateralInteraction(
     // Update transaction count
     transaction.absorbCollateralInteractionCount += 1;
     transaction.save();
+
+    return interaction;
 }
 
 export function createBuyCollateralInteraction(
@@ -417,11 +419,12 @@ export function createWithdrawReservesInteraction(
 
 export function createClaimRewardsInteraction(
     account: Account,
+    position: Position | null,
     destination: Address,
     token: Token,
     amount: BigInt,
     event: ethereum.Event
-): void {
+): ClaimRewardsInteraction {
     const transaction = getOrCreateTransaction(event);
     const tokenPrice = getTokenPriceUsd(token, event);
     const id = transaction.id.concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
@@ -431,6 +434,7 @@ export function createClaimRewardsInteraction(
     interaction.transaction = transaction.id;
 
     interaction.account = account.id;
+    interaction.position = position == null ? null : position.id;
     interaction.destination = destination;
 
     interaction.token = token.id;
@@ -442,4 +446,6 @@ export function createClaimRewardsInteraction(
     // Update transaction count
     transaction.claimRewardsInteractionCount += 1;
     transaction.save();
+
+    return interaction;
 }

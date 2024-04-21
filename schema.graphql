@@ -50,6 +50,8 @@ type Market @entity(immutable: true) {
     "Current configuration of this market"
     configuration: MarketConfiguration!
 
+    rewardConfiguration: MarketRewardConfiguration!
+
     "Current accounting of this market"
     accounting: MarketAccounting!
 
@@ -136,6 +138,8 @@ type Position @entity(immutable: true) {
     transferToCollateralInteractions: [TransferCollateralInteraction!]! @derivedFrom(field: "toPosition")
     "All interactions where a collateral asset was absorbed by the market during a liquidation of this position"
     absorbCollateralInteractions: [AbsorbCollateralInteraction!]! @derivedFrom(field: "position")
+    "All interactions claiming rewards"
+    rewardsClaimed: [ClaimRewardsInteraction!]! @derivedFrom(field: "position")
 
     "Historical snapshots of position accounting changes, these only get taken when the position accounting changes (not periodically)"
     positionAccountingSnapshots: [PositionAccountingSnapshot!] @derivedFrom(field: "position")
@@ -207,6 +211,16 @@ type MarketConfiguration @entity {
     baseToken: BaseToken!
     "List of collateral tokens for the market"
     collateralTokens: [CollateralToken!]!
+}
+
+type MarketRewardConfiguration @entity {
+    "Market id + reward token address"
+    id: Bytes!
+
+    tokenAddress: Bytes!
+    rescaleFactor: BigInt!
+    shouldUpscale: Boolean!
+    multiplier: BigInt!
 }
 
 ####
@@ -321,6 +335,9 @@ type MarketAccounting @entity {
     netSupplyApr: BigDecimal!
     "Net borrow APR of the market (borrowApr - rewardBorrowApr)"
     netBorrowApr: BigDecimal!
+
+    "Reward token price in USD"
+    rewardTokenUsdPrice: BigDecimal! 
 }
 
 type PositionAccounting @entity {
@@ -355,10 +372,16 @@ type PositionAccounting @entity {
     "Cumulative base token withdrawn"
     cumulativeBaseWithdrawn: BigInt!
 
-    "Cumulative base token supplied in USD (prices from the day of the supply)"
+    "Cumulative base token supplied in USD (prices from the time of the supply) - WARNING: it is possible base transfers are missed when debt it being transferred due to missing events: https://github.com/compound-finance/comet/issues/816"
     cumulativeBaseSuppliedUsd: BigDecimal!
-    "Cumulative base token withdrawn in USD (prices from the day of the withdraw)"
+    "Cumulative base token withdrawn in USD (prices from the time of the withdraw) - WARNING: it is possible base transfers are missed when debt it being transferred due to missing events: https://github.com/compound-finance/comet/issues/816"
     cumulativeBaseWithdrawnUsd: BigDecimal!
+    "Cumulative collateral liquidated in USD (prices from the time of the liquidation)"
+    cumulativeCollateralLiquidatedUsd: BigDecimal!
+    "Cumulative reward tokens claimed"
+    cumulativeRewardsClaimed: BigInt!
+    "Cumulative reward tokens claimed in USD - WARNING: it is possible claims are missed as we need to infer the claim market since RewardClaimed event is missing info: https://github.com/compound-finance/comet/issues/816"
+    cumulativeRewardsClaimedUsd: BigDecimal!
 }
 
 ####
@@ -751,6 +774,8 @@ type Transaction @entity(immutable: true) {
     supplyBaseInteractions: [SupplyBaseInteraction!]! @derivedFrom(field: "transaction")
     "All withdraw base interaction that were part of this transaction"
     withdrawBaseInteractions: [WithdrawBaseInteraction!]! @derivedFrom(field: "transaction")
+    "All transfer base interaction that were part of this transaction"
+    transferBaseInteractions: [TransferBaseInteraction!]! @derivedFrom(field: "transaction")
     "All absorb debt interaction that were part of this transaction"
     absorbDebtInteractions: [AbsorbDebtInteraction!]! @derivedFrom(field: "transaction")
     "All supply collateral interaction that were part of this transaction"
@@ -983,6 +1008,8 @@ type ClaimRewardsInteraction @entity(immutable: true) {
 
     "Account claiming the reward"
     account: Account!
+    "Position the rewards are being claimed for, optional since the RewardClaimed event is missing the comet contract, but we try to infer"
+    position: Position
     "Destination of the reward"
     destination: Bytes!
 
