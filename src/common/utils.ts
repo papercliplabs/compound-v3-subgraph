@@ -1,5 +1,5 @@
 import { Address, BigDecimal, BigInt, ethereum, log as logger } from "@graphprotocol/graph-ts";
-import { BASE_INDEX_SCALE, REWARD_FACTOR_SCALE, SUPPLY_EVENT_SIGNATURE, WITHDRAW_EVENT_SIGNATURE, ZERO_ADDRESS, ZERO_BD, ZERO_BI } from "./constants";
+import { BASE_INDEX_SCALE, REWARD_FACTOR_SCALE, SUPPLY_EVENT_SIGNATURE, WITHDRAW_EVENT_SIGNATURE, ABSORB_DEBT_EVENT_SIGNATURE, ZERO_ADDRESS, ZERO_BD, ZERO_BI } from "./constants";
 import { CometRewardsV1 as CometRewardsV1Contract } from "../../generated/templates/Comet/CometRewardsV1";
 import { CometRewardsV2 as CometRewardsV2Contract } from "../../generated/templates/Comet/CometRewardsV2";
 import { getCometRewardAddress } from "./networkSpecific";
@@ -134,7 +134,7 @@ export function getRewardConfigData(marketAddress: Address): RewardConfigData {
     }
 }
 
-export function logsContainWithdrawOrSupplyEvents(event: ethereum.Event): boolean {
+export function logsContainWithdrawOrSupplyOrAbsorbDebtEvents(event: ethereum.Event): boolean {
     const receipt = event.receipt;
 
     if (!receipt) {
@@ -148,7 +148,7 @@ export function logsContainWithdrawOrSupplyEvents(event: ethereum.Event): boolea
 
         if (log.topics.length > 0) {
             const eventSignature = log.topics[0];
-            if (SUPPLY_EVENT_SIGNATURE == eventSignature || WITHDRAW_EVENT_SIGNATURE == eventSignature) {
+            if (SUPPLY_EVENT_SIGNATURE == eventSignature || WITHDRAW_EVENT_SIGNATURE == eventSignature || ABSORB_DEBT_EVENT_SIGNATURE == eventSignature) {
                 return true;
             }
         }

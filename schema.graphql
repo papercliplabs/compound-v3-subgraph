@@ -126,6 +126,10 @@ type Position @entity(immutable: true) {
     supplyBaseInteractions: [SupplyBaseInteraction!]! @derivedFrom(field: "position")
     "All interactions where the base asset was withdraw from this position, including those taking loans"
     withdrawBaseInteractions: [WithdrawBaseInteraction!]! @derivedFrom(field: "position")
+    "All interactions where the base asset was transferred from this position"
+    transferFromBaseInteractions: [TransferBaseInteraction!]! @derivedFrom(field: "fromPosition")
+    "All interactions where the base asset was transferred to this position"
+    transferToBaseInteractions: [TransferBaseInteraction!]! @derivedFrom(field: "toPosition")
     "All interactions where this position was liquidated"
     absorbDebtInteractions: [AbsorbDebtInteraction!]! @derivedFrom(field: "position")
     "All interactions where a collateral asset was supplied to this position"
@@ -139,7 +143,7 @@ type Position @entity(immutable: true) {
     "All interactions where a collateral asset was absorbed by the market during a liquidation of this position"
     absorbCollateralInteractions: [AbsorbCollateralInteraction!]! @derivedFrom(field: "position")
     "All interactions claiming rewards"
-    rewardsClaimed: [ClaimRewardsInteraction!]! @derivedFrom(field: "position")
+    rewardsClaimedInteractions: [ClaimRewardsInteraction!]! @derivedFrom(field: "position")
 
     "Historical snapshots of position accounting changes, these only get taken when the position accounting changes (not periodically)"
     positionAccountingSnapshots: [PositionAccountingSnapshot!] @derivedFrom(field: "position")
@@ -367,21 +371,28 @@ type PositionAccounting @entity {
     "Collateral balances"
     collateralBalances: [PositionCollateralBalance!]!
 
-    "Cumulative base token supplied"
+    "Cumulative base token supplied (lend, repay)"
     cumulativeBaseSupplied: BigInt!
-    "Cumulative base token withdrawn"
+    "Cumulative base token withdrawn (remove lend, borrow)"
     cumulativeBaseWithdrawn: BigInt!
+    "Cumulative base debt absorbed from liquidations"
+    cumulativeBaseDebtAbsorbed: BigInt!
 
-    "Cumulative base token supplied in USD (prices from the time of the supply) - WARNING: it is possible base transfers are missed when debt it being transferred due to missing events: https://github.com/compound-finance/comet/issues/816"
+    "Cumulative base token supplied (supply, repay) in USD (prices from the time of the supply) - WARNING: it is possible base transfers are missed when debt it being transferred due to missing events: https://github.com/compound-finance/comet/issues/816"
     cumulativeBaseSuppliedUsd: BigDecimal!
-    "Cumulative base token withdrawn in USD (prices from the time of the withdraw) - WARNING: it is possible base transfers are missed when debt it being transferred due to missing events: https://github.com/compound-finance/comet/issues/816"
+    "Cumulative base token withdrawn (remove lend, borrow) in USD (prices from the time of the withdraw) - WARNING: it is possible base transfers are missed when debt it being transferred due to missing events: https://github.com/compound-finance/comet/issues/816"
     cumulativeBaseWithdrawnUsd: BigDecimal!
     "Cumulative collateral liquidated in USD (prices from the time of the liquidation)"
     cumulativeCollateralLiquidatedUsd: BigDecimal!
+
+
     "Cumulative reward tokens claimed"
     cumulativeRewardsClaimed: BigInt!
     "Cumulative reward tokens claimed in USD - WARNING: it is possible claims are missed as we need to infer the claim market since RewardClaimed event is missing info: https://github.com/compound-finance/comet/issues/816"
     cumulativeRewardsClaimedUsd: BigDecimal!
+
+    cumulativeGasUsedWei: BigInt!
+    cumulativeGasUsedUsd: BigDecimal!
 }
 
 ####
@@ -717,8 +728,8 @@ type Account @entity {
     ####
     "All positions of the account"
     positions: [Position!]! @derivedFrom(field: "account")
-    "All reward claim interactions of the account"
-    rewardsClaimed: [ClaimRewardsInteraction!]! @derivedFrom(field: "account")
+    "All reward claim interactions of the account. Note that this includes all rewards claimed, where the positions may miss rewards claimed due to missing events"
+    rewardsClaimedInteractions: [ClaimRewardsInteraction!]! @derivedFrom(field: "account")
 }
 
 type _ActiveAccount @entity {
@@ -844,8 +855,10 @@ type TransferBaseInteraction @entity(immutable: true) {
 
     "Market the interaction is with"
     market: Market!
-    "Position the transfer involves, note all transfers are either mint or burns"
-    position: Position!
+    "Position the transfer is from, note all transfers are either mint or burns, if mint this will be null"
+    fromPosition: Position
+    "Position the transfer is to, note all transfers are either mint or burns, if burn this will be null"
+    toPosition: Position
 
     "Asset being transferred"
     asset: BaseToken!
@@ -870,10 +883,10 @@ type AbsorbDebtInteraction @entity(immutable: true) {
 
     "Asset being absorbed by the market"
     asset: BaseToken!
-    "Amount of debt being absorbed"
-    amount: BigInt!
+    "Amount of debt paid out"
+    amount: BigInt! 
     "Amount of debt being absorbed in USD"
-    amountUsd: BigDecimal!
+    amountUsd: BigDecimal! 
 }
 
 type SupplyCollateralInteraction @entity(immutable: true) {

@@ -19,6 +19,7 @@ import {
     updateMarketConfiguration,
 } from "../mappingHelpers/market";
 import {
+    createPositionAccountingSnapshot,
     getOrCreatePosition,
     getOrCreatePositionAccounting,
     updatePositionAccounting,
@@ -43,9 +44,10 @@ import {
     updatePositionCollateralBalance,
 } from "../mappingHelpers/collateralBalance";
 import { getOrCreateCollateralToken, getOrCreateToken } from "../mappingHelpers/token";
-import { InteractionType, ZERO_ADDRESS, ZERO_BI } from "../common/constants";
+import { InteractionType, ZERO_ADDRESS, ZERO_BD, ZERO_BI } from "../common/constants";
 import { updateUsageMetrics } from "../mappingHelpers/usage";
-import { bigIntMax, bigIntMin, logsContainWithdrawOrSupplyEvents, presentValue } from "../common/utils";
+import { bigIntMax, bigIntMin, logsContainWithdrawOrSupplyOrAbsorbDebtEvents, presentValue } from "../common/utils";
+import { BaseToken, Transaction } from "../../generated/schema";
 
 export function handleUpgraded(event: UpgradedEvent): void {
     // Create market if not yet made
@@ -74,15 +76,19 @@ export function handleSupply(event: SupplyEvent): void {
     updateMarketAccounting(market, marketAccounting, event);
 
     const supplyBaseInteraction = createSupplyBaseInteraction(market, position, from, amount, event);
+    const transaction = Transaction.load(supplyBaseInteraction.transaction)!;
 
     // Update position accounting
     updatePositionAccounting(position, positionAccounting, event);
     positionAccounting.cumulativeBaseSupplied = positionAccounting.cumulativeBaseSupplied.plus(supplyBaseInteraction.amount);
     positionAccounting.cumulativeBaseSuppliedUsd = positionAccounting.cumulativeBaseSuppliedUsd.plus(supplyBaseInteraction.amountUsd);
+    positionAccounting.cumulativeGasUsedWei = positionAccounting.cumulativeGasUsedWei.plus(transaction.gasUsed ? transaction.gasUsed! : ZERO_BI);
+    positionAccounting.cumulativeGasUsedUsd = positionAccounting.cumulativeGasUsedUsd.plus(transaction.gasUsedUsd ? transaction.gasUsedUsd! : ZERO_BD);
+    positionAccounting.save();
+    createPositionAccountingSnapshot(positionAccounting, event); // Manually retrigger snapshot
 
     updateUsageMetrics(account, market, InteractionType.SUPPLY_BASE, event);
 
-    positionAccounting.save();
     marketAccounting.save();
 }
 
@@ -100,21 +106,25 @@ export function handleWithdraw(event: WithdrawEvent): void {
     updateMarketAccounting(market, marketAccounting, event);
 
     const interaction = createWithdrawBaseInteraction(market, position, destination, amount, event);
+    const transaction = Transaction.load(interaction.transaction)!;
 
     // Update position cumulatives
-    updatePositionAccounting(position, positionAccounting, event);
+    updatePositionAccounting(position, positionAccounting, event); 
     positionAccounting.cumulativeBaseWithdrawn = positionAccounting.cumulativeBaseWithdrawn.plus(interaction.amount);
     positionAccounting.cumulativeBaseWithdrawnUsd = positionAccounting.cumulativeBaseWithdrawnUsd.plus(interaction.amountUsd);
+    positionAccounting.cumulativeGasUsedWei = positionAccounting.cumulativeGasUsedWei.plus(transaction.gasUsed ? transaction.gasUsed! : ZERO_BI);
+    positionAccounting.cumulativeGasUsedUsd = positionAccounting.cumulativeGasUsedUsd.plus(transaction.gasUsedUsd ? transaction.gasUsedUsd! : ZERO_BD);
+    positionAccounting.save();
+    createPositionAccountingSnapshot(positionAccounting, event); // Manually retrigger snapshot
 
     updateUsageMetrics(account, market, InteractionType.WITHDRAW_BASE, event);
 
-    positionAccounting.save();
     marketAccounting.save();
 }
 
 export function handleAbsorbDebt(event: AbsorbDebtEvent): void {
     const ownerAddress = event.params.borrower;
-    const amount = event.params.basePaidOut;
+    const basePaidOut = event.params.basePaidOut;
     const absorber = event.params.absorber;
 
     const market = getOrCreateMarket(event.address, event);
@@ -123,10 +133,12 @@ export function handleAbsorbDebt(event: AbsorbDebtEvent): void {
     const position = getOrCreatePosition(market, account, event);
     const positionAccounting = getOrCreatePositionAccounting(position, event);
 
+    createAbsorbDebtInteraction(market, position, absorber, basePaidOut, event);
+
+    // Market accounting
     updateMarketAccounting(market, marketAccounting, event);
     updatePositionAccounting(position, positionAccounting, event);
 
-    createAbsorbDebtInteraction(market, position, absorber, amount, event);
     updateUsageMetrics(account, market, InteractionType.LIQUIDATION, event);
 
     marketAccounting.save();
@@ -154,9 +166,17 @@ export function handleSupplyCollateral(event: SupplyCollateralEvent): void {
     updatePositionCollateralBalance(position, positionCollateralBalance, event);
 
     updateMarketAccounting(market, marketAccounting, event);
-    updatePositionAccounting(position, positionAccounting, event);
 
-    createSupplyCollateralInteraction(market, position, supplier, collateralToken, amount, event);
+    const interaction = createSupplyCollateralInteraction(market, position, supplier, collateralToken, amount, event);
+    const transaction = Transaction.load(interaction.transaction)!;
+
+    // Update position accounting
+    updatePositionAccounting(position, positionAccounting, event);
+    positionAccounting.cumulativeGasUsedWei = positionAccounting.cumulativeGasUsedWei.plus(transaction.gasUsed ? transaction.gasUsed! : ZERO_BI);
+    positionAccounting.cumulativeGasUsedUsd = positionAccounting.cumulativeGasUsedUsd.plus(transaction.gasUsedUsd ? transaction.gasUsedUsd! : ZERO_BD);
+    positionAccounting.save();
+    createPositionAccountingSnapshot(positionAccounting, event); // Manually retrigger snapshot
+
     updateUsageMetrics(account, market, InteractionType.SUPPLY_COLLATERAL, event);
 
     marketCollateralBalance.save();
@@ -186,9 +206,19 @@ export function handleWithdrawCollateral(event: WithdrawCollateralEvent): void {
     updatePositionCollateralBalance(position, positionCollateralBalance, event);
 
     updateMarketAccounting(market, marketAccounting, event);
-    updatePositionAccounting(position, positionAccounting, event);
 
-    createWithdrawCollateralInteraction(market, position, destination, collateralToken, amount.neg(), event);
+    const interaction = createWithdrawCollateralInteraction(market, position, destination, collateralToken, amount.neg(), event);
+    const transaction = Transaction.load(interaction.transaction)!;
+
+    // Update position accounting
+    updatePositionAccounting(position, positionAccounting, event);
+    positionAccounting.cumulativeGasUsedWei = positionAccounting.cumulativeGasUsedWei.plus(transaction.gasUsed ? transaction.gasUsed! : ZERO_BI);
+    positionAccounting.cumulativeGasUsedUsd = positionAccounting.cumulativeGasUsedUsd.plus(transaction.gasUsedUsd ? transaction.gasUsedUsd! : ZERO_BD);
+    positionAccounting.save();
+    createPositionAccountingSnapshot(positionAccounting, event); // Manually retrigger snapshot
+
+
+
     updateUsageMetrics(account, market, InteractionType.WITHDRAW_COLLATERAL, event);
 
     marketCollateralBalance.save();
@@ -220,11 +250,19 @@ export function handleTransferCollateral(event: TransferCollateralEvent): void {
     updatePositionCollateralBalance(fromPosition, fromPositionCollateralBalance, event);
     updatePositionCollateralBalance(toPosition, toPositionCollateralBalance, event);
 
-    updateMarketAccounting(market, marketAccounting, event);
+    const interaction = createTransferCollateralInteraction(market, fromPosition, toPosition, collateralToken, amount, event);
+    const transaction = Transaction.load(interaction.transaction)!;
+
+    // From position accounting
     updatePositionAccounting(fromPosition, fromPositionAccounting, event);
+    fromPositionAccounting.cumulativeGasUsedWei = fromPositionAccounting.cumulativeGasUsedWei.plus(transaction.gasUsed ? transaction.gasUsed! : ZERO_BI);
+    fromPositionAccounting.cumulativeGasUsedUsd = fromPositionAccounting.cumulativeGasUsedUsd.plus(transaction.gasUsedUsd ? transaction.gasUsedUsd! : ZERO_BD);
+    fromPositionAccounting.save();
+    createPositionAccountingSnapshot(fromPositionAccounting, event); // Manually retrigger snapshot
+
+    updateMarketAccounting(market, marketAccounting, event);
     updatePositionAccounting(toPosition, toPositionAccounting, event);
 
-    createTransferCollateralInteraction(market, fromPosition, toPosition, collateralToken, amount, event);
     updateUsageMetrics(fromAccount, market, InteractionType.TRANSFER_COLLATERAL, event);
 
     fromPositionCollateralBalance.save();
@@ -259,12 +297,13 @@ export function handleAbsorbCollateral(event: AbsorbCollateralEvent): void {
     const interaction = createAbsorbCollateralInteraction(market, position, absorber, collateralToken, amount, event);
 
     updatePositionAccounting(position, positionAccounting, event);
-    positionAccounting.cumulativeCollateralLiquidatedUsd = positionAccounting.cumulativeCollateralLiquidatedUsd.plus(interaction.amountUsd);
+    positionAccounting.cumulativeCollateralLiquidatedUsd = positionAccounting.cumulativeCollateralLiquidatedUsd.plus(interaction.amountUsd); 
+    positionAccounting.save();
+    createPositionAccountingSnapshot(positionAccounting, event); // Manually retrigger snapshot
 
     marketCollateralBalance.save();
     positionCollateralBalance.save();
     marketAccounting.save();
-    positionAccounting.save();
 }
 
 export function handleBuyCollateral(event: BuyCollateralEvent): void {
@@ -300,7 +339,7 @@ export function handleWithdrawReserves(event: WithdrawReservesEvent): void {
 }
 
 export function handleTransfer(event: TransferEvent): void {
-    if(logsContainWithdrawOrSupplyEvents(event)) {
+    if(logsContainWithdrawOrSupplyOrAbsorbDebtEvents(event)) {
         // Ignore any transfers when there is supply or withdraw events
         return;
     }
@@ -320,7 +359,7 @@ export function handleTransfer(event: TransferEvent): void {
         const fromPositionAccounting = getOrCreatePositionAccounting(fromPosition, event);
 
         const basePrincipalBefore = fromPositionAccounting.basePrincipal;
-        updatePositionAccounting(fromPosition, fromPositionAccounting, event);
+        updatePositionAccounting(fromPosition, fromPositionAccounting, event); 
         const basePrincipalAfter = fromPositionAccounting.basePrincipal;
 
         const withdrawPrincipal = basePrincipalBefore.gt(ZERO_BI) ? basePrincipalBefore.minus(bigIntMax(basePrincipalAfter, ZERO_BI)) : ZERO_BI; 
@@ -330,22 +369,24 @@ export function handleTransfer(event: TransferEvent): void {
         const borrowBase = presentValue(borrowPrincipal, marketAccounting.baseBorrowIndex);
         const totalBaseWithdraw = withdrawBase.plus(borrowBase);
 
-        const interaction = createTransferBaseInteraction(market, fromPosition, totalBaseWithdraw.neg(), event);
+        const interaction = createTransferBaseInteraction(market, fromPosition, null, totalBaseWithdraw.neg(), event);
 
         fromPositionAccounting.cumulativeBaseWithdrawn = fromPositionAccounting.cumulativeBaseWithdrawn.minus(interaction.amount); // Double negative here
         fromPositionAccounting.cumulativeBaseWithdrawnUsd = fromPositionAccounting.cumulativeBaseWithdrawnUsd.minus(interaction.amountUsd); // Double negative here
 
         fromPositionAccounting.save();
 
+        createPositionAccountingSnapshot(fromPositionAccounting, event); // Manually retrigger snapshot
+
         updateUsageMetrics(fromAccount, market, InteractionType.TRANSFER_BASE, event);
     } else {
-        // Transfer to, or absorbInternal's base paid out from a liquidation
+        // Transfer to
         const toAccount = getOrCreateAccount(transferToAddress, event);
         const toPosition = getOrCreatePosition(market, toAccount, event);
         const toPositionAccounting = getOrCreatePositionAccounting(toPosition, event);
 
         const basePrincipalBefore = toPositionAccounting.basePrincipal;
-        updatePositionAccounting(toPosition, toPositionAccounting, event);
+        updatePositionAccounting(toPosition, toPositionAccounting, event); 
         const basePrincipalAfter = toPositionAccounting.basePrincipal;
 
         const supplyPrincipal = basePrincipalAfter.gt(ZERO_BI) ? basePrincipalAfter.minus(bigIntMax(basePrincipalBefore, ZERO_BI)) : ZERO_BI; 
@@ -355,12 +396,14 @@ export function handleTransfer(event: TransferEvent): void {
         const repayBase = presentValue(repayPrincipal, marketAccounting.baseBorrowIndex);
         const totalBaseSupply = supplyBase.plus(repayBase);
 
-        const interaction = createTransferBaseInteraction(market, toPosition, totalBaseSupply, event);
+        const interaction = createTransferBaseInteraction(market, null, toPosition, totalBaseSupply, event);
 
         toPositionAccounting.cumulativeBaseSupplied = toPositionAccounting.cumulativeBaseSupplied.plus(interaction.amount); 
         toPositionAccounting.cumulativeBaseSuppliedUsd = toPositionAccounting.cumulativeBaseSuppliedUsd.plus(interaction.amountUsd); 
 
         toPositionAccounting.save();
+
+        createPositionAccountingSnapshot(toPositionAccounting, event); // Manually retrigger snapshot
 
         updateUsageMetrics(toAccount, market, InteractionType.TRANSFER_BASE, event);
     }

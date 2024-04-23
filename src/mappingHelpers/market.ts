@@ -36,6 +36,7 @@ import {
     getOrCreateToken,
     updateBaseTokenConfig,
     updateCollateralTokenConfig,
+    createCollateralTokenSnapshot,
 } from "./token";
 import { getOrCreateUsage } from "./usage";
 import { createMarketCollateralBalanceSnapshot, getOrCreateMarketCollateralBalance, updateMarketCollateralBalanceUsd } from "./collateralBalance";
@@ -127,22 +128,32 @@ function createMarketConfigurationSnapshot(config: MarketConfiguration, event: e
     );
 
     // Copy existing config
-    const copiedConfig = new MarketConfiguration(snapshotId);
+    const configSnapshot = new MarketConfiguration(snapshotId);
 
     let entries = config.entries;
     for (let i = 0; i < entries.length; ++i) {
-        if (entries[i].key.toString() != "id") {
-            copiedConfig.set(entries[i].key, entries[i].value);
+        const key = entries[i].key.toString();
+        if (key != "id" && key != "collateralTokens") {
+            configSnapshot.set(entries[i].key, entries[i].value);
         }
     }
 
-    copiedConfig.save();
+    // Copy collateral tokens (deep copy)
+    let collateralTokenSnapshots: Bytes[] = [];
+    for(let i = 0; i < config.collateralTokens.length; i++) {
+        const collateralToken = CollateralToken.load(config.collateralTokens[i])!; // Guaranteed to exist
+        const collateralTokenSnapshot = createCollateralTokenSnapshot(collateralToken, event);
+        collateralTokenSnapshots.push(collateralTokenSnapshot.id);
+    }
+    configSnapshot.collateralTokens = collateralTokenSnapshots;
+
+    configSnapshot.save();
 
     // Create snapshot
     const marketConfigSnapshot = new MarketConfigurationSnapshot(snapshotId);
     marketConfigSnapshot.timestamp = event.block.timestamp;
     marketConfigSnapshot.market = config.market;
-    marketConfigSnapshot.configuration = copiedConfig.id;
+    marketConfigSnapshot.configuration = configSnapshot.id;
     marketConfigSnapshot.save();
 }
 

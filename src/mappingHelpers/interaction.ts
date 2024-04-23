@@ -147,7 +147,8 @@ export function createWithdrawBaseInteraction(
 
 export function createTransferBaseInteraction(
     market: Market,
-    position: Position,
+    fromPosition: Position | null,
+    toPosition: Position | null,
     amount: BigInt,
     event: ethereum.Event
 ): TransferBaseInteraction {
@@ -163,7 +164,12 @@ export function createTransferBaseInteraction(
     interaction.transaction = transaction.id;
 
     interaction.market = market.id;
-    interaction.position = position.id;
+    if(fromPosition) {
+        interaction.fromPosition = fromPosition.id;
+    }
+    if(toPosition) {
+        interaction.toPosition = toPosition.id;
+    }
 
     interaction.asset = marketConfiguration.baseToken;
     interaction.amount = amount;
@@ -184,7 +190,7 @@ export function createAbsorbDebtInteraction(
     absorber: Address,
     amount: BigInt,
     event: ethereum.Event
-): void {
+): AbsorbDebtInteraction {
     const transaction = getOrCreateTransaction(event);
     const marketConfiguration = getOrCreateMarketConfiguration(market, event);
     const baseToken = BaseToken.load(marketConfiguration.baseToken)!;
@@ -201,14 +207,17 @@ export function createAbsorbDebtInteraction(
     interaction.absorber = absorber;
 
     interaction.asset = marketConfiguration.baseToken;
+
     interaction.amount = amount;
-    interaction.amountUsd = computeTokenValueUsd(amount, u8(token.decimals), tokenPrice);
+    interaction.amountUsd = computeTokenValueUsd(amount, u8(token.decimals), tokenPrice);;
 
     interaction.save();
 
     // Update transaction count
     transaction.absorbDebtInteractionCount += 1;
     transaction.save();
+
+    return interaction;
 }
 
 export function createSupplyCollateralInteraction(
@@ -218,7 +227,7 @@ export function createSupplyCollateralInteraction(
     asset: CollateralToken,
     amount: BigInt,
     event: ethereum.Event
-): void {
+): SupplyCollateralInteraction {
     const transaction = getOrCreateTransaction(event);
     const token = getOrCreateToken(Address.fromBytes(asset.token), event);
     const tokenPrice = getTokenPriceUsd(asset, event);
@@ -241,6 +250,8 @@ export function createSupplyCollateralInteraction(
     // Update transaction count
     transaction.supplyCollateralInteractionCount += 1;
     transaction.save();
+
+    return interaction;
 }
 
 export function createWithdrawCollateralInteraction(
@@ -250,7 +261,7 @@ export function createWithdrawCollateralInteraction(
     asset: CollateralToken,
     amount: BigInt,
     event: ethereum.Event
-): void {
+): WithdrawCollateralInteraction {
     const transaction = getOrCreateTransaction(event);
     const token = getOrCreateToken(Address.fromBytes(asset.token), event);
     const tokenPrice = getTokenPriceUsd(asset, event);
@@ -273,6 +284,8 @@ export function createWithdrawCollateralInteraction(
     // Update transaction count
     transaction.withdrawCollateralInteractionCount += 1;
     transaction.save();
+
+    return interaction;
 }
 
 export function createTransferCollateralInteraction(
@@ -282,7 +295,7 @@ export function createTransferCollateralInteraction(
     asset: CollateralToken,
     amount: BigInt,
     event: ethereum.Event
-): void {
+): TransferCollateralInteraction {
     const transaction = getOrCreateTransaction(event);
     const token = getOrCreateToken(Address.fromBytes(asset.token), event);
     const tokenPrice = getTokenPriceUsd(asset, event);
@@ -305,6 +318,8 @@ export function createTransferCollateralInteraction(
     // Update transaction count
     transaction.transferCollateralInteractionCount += 1;
     transaction.save();
+
+    return interaction;
 }
 
 export function createAbsorbCollateralInteraction(

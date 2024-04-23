@@ -32,3 +32,4 @@ export namespace InteractionType {
 
 export const SUPPLY_EVENT_SIGNATURE = crypto.keccak256(ByteArray.fromUTF8("Supply(address,address,uint256)"));;
 export const WITHDRAW_EVENT_SIGNATURE = crypto.keccak256(ByteArray.fromUTF8("Withdraw(address,address,uint256)"));;
+export const ABSORB_DEBT_EVENT_SIGNATURE = crypto.keccak256(ByteArray.fromUTF8("AbsorbDebt(address,address,uint256,uint256)"));;
