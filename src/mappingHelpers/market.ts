@@ -6,8 +6,10 @@ import {
     HourlyMarketAccounting,
     Market,
     MarketAccounting,
+    MarketCollateralBalance,
     MarketConfiguration,
     MarketConfigurationSnapshot,
+    MarketRewardConfiguration,
     Token,
     WeeklyMarketAccounting,
 } from "../../generated/schema";
@@ -34,11 +36,12 @@ import {
     getOrCreateToken,
     updateBaseTokenConfig,
     updateCollateralTokenConfig,
+    createCollateralTokenSnapshot,
 } from "./token";
 import { getOrCreateUsage } from "./usage";
-import { getOrCreateMarketCollateralBalance, updateMarketCollateralBalanceUsd } from "./collateralBalance";
+import { createMarketCollateralBalanceSnapshot, getOrCreateMarketCollateralBalance, updateMarketCollateralBalanceUsd } from "./collateralBalance";
 import { getOrCreateProtocol, getOrCreateProtocolAccounting, updateProtocolAccounting } from "./protocol";
-import { getConfiguratorProxyAddress } from "../common/networkSpecific";
+import { getCometRewardAddress, getConfiguratorProxyAddress } from "../common/networkSpecific";
 
 ////
 // Market Configuration
@@ -125,24 +128,63 @@ function createMarketConfigurationSnapshot(config: MarketConfiguration, event: e
     );
 
     // Copy existing config
-    const copiedConfig = new MarketConfiguration(snapshotId);
+    const configSnapshot = new MarketConfiguration(snapshotId);
 
     let entries = config.entries;
     for (let i = 0; i < entries.length; ++i) {
-        if (entries[i].key.toString() != "id") {
-            copiedConfig.set(entries[i].key, entries[i].value);
+        const key = entries[i].key.toString();
+        if (key != "id" && key != "collateralTokens") {
+            configSnapshot.set(entries[i].key, entries[i].value);
         }
     }
 
-    copiedConfig.save();
+    // Copy collateral tokens (deep copy)
+    let collateralTokenSnapshots: Bytes[] = [];
+    for(let i = 0; i < config.collateralTokens.length; i++) {
+        const collateralToken = CollateralToken.load(config.collateralTokens[i])!; // Guaranteed to exist
+        const collateralTokenSnapshot = createCollateralTokenSnapshot(collateralToken, event);
+        collateralTokenSnapshots.push(collateralTokenSnapshot.id);
+    }
+    configSnapshot.collateralTokens = collateralTokenSnapshots;
+
+    configSnapshot.save();
 
     // Create snapshot
     const marketConfigSnapshot = new MarketConfigurationSnapshot(snapshotId);
     marketConfigSnapshot.timestamp = event.block.timestamp;
     marketConfigSnapshot.market = config.market;
-    marketConfigSnapshot.configuration = copiedConfig.id;
+    marketConfigSnapshot.configuration = configSnapshot.id;
     marketConfigSnapshot.save();
 }
+
+export function getOrCreateMarketRewardConfiguration(market: Market, event: ethereum.Event): MarketRewardConfiguration {
+    const id = market.id.concat(getCometRewardAddress()); 
+    let config = MarketRewardConfiguration.load(id);
+
+    if (!config) {
+        config = new MarketRewardConfiguration(id);
+
+        const configData = getRewardConfigData(Address.fromBytes(market.id));
+        config.tokenAddress = configData.tokenAddress;
+        config.rescaleFactor = configData.rescaleFactor;
+        config.shouldUpscale = configData.shouldUpscale;
+        config.multiplier = configData.multiplier;
+        config.save();
+    } else if (config.tokenAddress.equals(ZERO_ADDRESS)) {
+        // Check for config
+        const configData = getRewardConfigData(Address.fromBytes(market.id));
+
+        if(configData.tokenAddress.notEqual(ZERO_ADDRESS)) {
+            config.tokenAddress = configData.tokenAddress;
+            config.rescaleFactor = configData.rescaleFactor;
+            config.shouldUpscale = configData.shouldUpscale;
+            config.multiplier = configData.multiplier;
+            config.save();
+        }
+    }
+
+    return config;
+} 
 
 ////
 // Market Accounting
@@ -174,10 +216,11 @@ export function updateMarketAccounting(market: Market, accounting: MarketAccount
 
     const comet = CometContract.bind(Address.fromBytes(market.id));
     const configuration = getOrCreateMarketConfiguration(market, event);
+    const rewardConfigData = getOrCreateMarketRewardConfiguration(market, event);
 
     const totalsBasic = comet.totalsBasic();
 
-    const rewardConfigData = getRewardConfigData(Address.fromBytes(market.id));
+    // const rewardConfigData = getRewardConfigData(Address.fromBytes(market.id));
 
     accounting.market = market.id;
     accounting.lastAccountingUpdatedBlockNumber = event.block.number;
@@ -232,12 +275,14 @@ export function updateMarketAccounting(market: Market, accounting: MarketAccount
         baseTokenPriceUsd
     );
 
-    if (rewardConfigData.tokenAddress == Address.zero()) {
+    if (Address.fromBytes(rewardConfigData.tokenAddress).equals(ZERO_ADDRESS)) {
         // No rewards
         accounting.rewardSupplyApr = ZERO_BD;
         accounting.rewardBorrowApr = ZERO_BD;
+
+        accounting.rewardTokenUsdPrice = ZERO_BD;
     } else {
-        const rewardToken = getOrCreateToken(rewardConfigData.tokenAddress, event);
+        const rewardToken = getOrCreateToken(Address.fromBytes(rewardConfigData.tokenAddress), event);
         const rewardMultiplier = rewardConfigData.multiplier;
 
         const supplyRewardTokensPerDay = configuration.baseTrackingSupplySpeed
@@ -275,6 +320,8 @@ export function updateMarketAccounting(market: Market, accounting: MarketAccount
 
         accounting.rewardSupplyApr = rewardSupplyYieldPerDay.times(DAYS_PER_YEAR.toBigDecimal());
         accounting.rewardBorrowApr = rewardBorrowYieldPerDay.times(DAYS_PER_YEAR.toBigDecimal());
+
+        accounting.rewardTokenUsdPrice = getTokenPriceUsd(rewardToken, event)
     }
 
     // Collateral USD balances
@@ -282,17 +329,21 @@ export function updateMarketAccounting(market: Market, accounting: MarketAccount
 
     let totalCollateralBalanceUsd = ZERO_BD;
     let totalCollateralReservesUsd = ZERO_BD;
+    let collateralBalances: Bytes[] = [];
     for (let i = 0; i < collateralTokenIds.length; i++) {
         const token = CollateralToken.load(collateralTokenIds[i])!; // Guaranteed to exist
-        const tokenBalance = getOrCreateMarketCollateralBalance(token, event);
-        updateMarketCollateralBalanceUsd(tokenBalance, event);
-        tokenBalance.save();
+        const collateralBalance = getOrCreateMarketCollateralBalance(token, event);
+        updateMarketCollateralBalanceUsd(collateralBalance, event);
+        collateralBalance.save();
 
-        totalCollateralBalanceUsd = totalCollateralBalanceUsd.plus(tokenBalance.balanceUsd);
-        totalCollateralReservesUsd = totalCollateralReservesUsd.plus(tokenBalance.reservesUsd);
+        collateralBalances.push(collateralBalance.id);
+
+        totalCollateralBalanceUsd = totalCollateralBalanceUsd.plus(collateralBalance.balanceUsd);
+        totalCollateralReservesUsd = totalCollateralReservesUsd.plus(collateralBalance.reservesUsd);
     }
     accounting.collateralBalanceUsd = totalCollateralBalanceUsd;
     accounting.collateralReservesBalanceUsd = totalCollateralReservesUsd;
+    accounting.collateralBalances = collateralBalances;
 
     accounting.totalReserveBalanceUsd = accounting.baseReserveBalanceUsd.plus(accounting.collateralReservesBalanceUsd);
 
@@ -303,6 +354,7 @@ export function updateMarketAccounting(market: Market, accounting: MarketAccount
         accounting.totalBaseSupply.toBigDecimal(),
         accounting.totalBaseBorrow.toBigDecimal()
     );
+
 
     // Update protocol accounting whenever market accounting changes
     const protocol = getOrCreateProtocol(event);
@@ -334,10 +386,21 @@ function createMarketAccountingSnapshots(accounting: MarketAccounting, event: et
 
         let entries = accounting.entries;
         for (let i = 0; i < entries.length; ++i) {
-            if (entries[i].key.toString() != "id") {
+        const key = entries[i].key.toString();
+            if (key != "id" && key != "collateralBalances") {
                 copiedAccounting.set(entries[i].key, entries[i].value);
             }
         }
+
+        // Copy collateral balances (needs special handling since we need to deep copy)
+        let collateralBalancesSnapshot: Bytes[] = [];
+        for(let i = 0; i < accounting.collateralBalances.length; i++) {
+            const collateralBalance = MarketCollateralBalance.load(accounting.collateralBalances[i])!; // Guaranteed to exist
+            const collateralBalanceSnapshot = createMarketCollateralBalanceSnapshot(collateralBalance, event);
+            collateralBalancesSnapshot.push(collateralBalanceSnapshot.id);
+        }
+        copiedAccounting.collateralBalances = collateralBalancesSnapshot;
+
         copiedAccounting.save();
 
         if (!hourlyAccounting) {
@@ -387,6 +450,9 @@ export function getOrCreateMarket(marketId: Address, event: ethereum.Event): Mar
 
         const marketConfig = getOrCreateMarketConfiguration(market, event);
         market.configuration = marketConfig.id;
+
+        const marketRewardConfiguration = getOrCreateMarketRewardConfiguration(market, event);
+        market.rewardConfiguration = marketRewardConfiguration.id;
 
         const marketAccounting = getOrCreateMarketAccounting(market, event);
         market.accounting = marketAccounting.id;

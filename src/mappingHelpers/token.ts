@@ -112,6 +112,27 @@ export function updateCollateralTokenConfig(collateralToken: CollateralToken, ev
     collateralToken.supplyCap = assetInfo.supplyCap;
 }
 
+export function createCollateralTokenSnapshot(collateralToken: CollateralToken, event: ethereum.Event): CollateralToken {
+    const snapshotId = collateralToken.id
+        .concat(Bytes.fromByteArray(Bytes.fromBigInt(event.block.number)))
+        .concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
+
+    const snapshot = new CollateralToken(snapshotId);
+
+    let entries = collateralToken.entries;
+    for (let i = 0; i < entries.length; ++i) {
+        if (entries[i].key.toString() != "id") {
+            snapshot.set(entries[i].key, entries[i].value);
+        }
+    }
+
+    snapshot.save();
+
+    return snapshot;
+
+
+}
+
 ////
 // Price
 ////

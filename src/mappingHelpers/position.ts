@@ -7,13 +7,14 @@ import {
     BaseToken,
     CollateralToken,
     PositionAccountingSnapshot,
+    PositionCollateralBalance,
 } from "../../generated/schema";
 import { ZERO_BD, ZERO_BI } from "../common/constants";
 import { getOrCreateMarket, getOrCreateMarketAccounting, getOrCreateMarketConfiguration } from "./market";
 import { computeTokenValueUsd, presentValue } from "../common/utils";
 import { Comet as CometContract } from "../../generated/templates/Comet/Comet";
 import { getOrCreateToken, getTokenPriceUsd } from "./token";
-import { getOrCreatePositionCollateralBalance, updatePositionCollateralBalanceUsd } from "./collateralBalance";
+import { createPositionCollateralBalanceSnapshot, getOrCreatePositionCollateralBalance, updatePositionCollateralBalanceUsd } from "./collateralBalance";
 
 ////
 // Position Accounting
@@ -29,6 +30,24 @@ export function getOrCreatePositionAccounting(position: Position, event: ethereu
 
         positionAccounting.position = position.id;
 
+        // Set here to solve init issue, since we optimize to not update when block number didn't change
+        positionAccounting.lastUpdatedBlockNumber = ZERO_BI;
+
+        // Set cumulatives
+        positionAccounting.cumulativeBaseSupplied = ZERO_BI;
+        positionAccounting.cumulativeBaseWithdrawn = ZERO_BI;
+        positionAccounting.cumulativeBaseDebtAbsorbed = ZERO_BI;
+
+        positionAccounting.cumulativeBaseSuppliedUsd = ZERO_BD;
+        positionAccounting.cumulativeBaseWithdrawnUsd = ZERO_BD;
+        positionAccounting.cumulativeCollateralLiquidatedUsd = ZERO_BD;
+
+        positionAccounting.cumulativeRewardsClaimed = ZERO_BI;
+        positionAccounting.cumulativeRewardsClaimedUsd = ZERO_BD;
+
+        positionAccounting.cumulativeGasUsedWei = ZERO_BI;
+        positionAccounting.cumulativeGasUsedUsd = ZERO_BD;
+
         updatePositionAccounting(position, positionAccounting, event);
         positionAccounting.save();
     }
@@ -41,6 +60,11 @@ export function updatePositionAccounting(
     accounting: PositionAccounting,
     event: ethereum.Event
 ): void {
+    if (accounting.lastUpdatedBlockNumber.equals(event.block.number)) {
+        // Don't bother to update if we already did this block, assume this gets set on init
+        return;
+    }
+
     const market = getOrCreateMarket(Address.fromBytes(position.market), event);
     const marketAccounting = getOrCreateMarketAccounting(market, event);
     const marketConfiguration = getOrCreateMarketConfiguration(market, event);
@@ -71,6 +95,7 @@ export function updatePositionAccounting(
     // Collateral Balance USD
     const collateralTokenIds = marketConfiguration.collateralTokens;
     let totalCollateralBalanceUsd = ZERO_BD;
+    let collateralBalances: Bytes[] = [];
     for (let i = 0; i < collateralTokenIds.length; i++) {
         const collateralToken = CollateralToken.load(collateralTokenIds[i])!; // Guaranteed to exist
         const collateralBalance = getOrCreatePositionCollateralBalance(collateralToken, position, event);
@@ -78,36 +103,55 @@ export function updatePositionAccounting(
         updatePositionCollateralBalanceUsd(collateralBalance, event);
         collateralBalance.save();
 
+        collateralBalances.push(collateralBalance.id);
+
         totalCollateralBalanceUsd = totalCollateralBalanceUsd.plus(collateralBalance.balanceUsd);
     }
     accounting.collateralBalanceUsd = totalCollateralBalanceUsd;
+    accounting.collateralBalances = collateralBalances;
 
     // Create snapshot on change
-    createPositionAccountingSnapshots(accounting, event);
+    createPositionAccountingSnapshot(accounting, event);
 }
 
-function createPositionAccountingSnapshots(accounting: PositionAccounting, event: ethereum.Event): void {
+export function createPositionAccountingSnapshot(accounting: PositionAccounting, event: ethereum.Event): void {
     const snapshotId = accounting.position
         .concat(Bytes.fromByteArray(Bytes.fromBigInt(event.block.number)))
         .concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
 
-    // Copy existing config
-    const copiedConfig = new PositionAccounting(snapshotId);
+    // If we already took it, but have manually retriggered, update it
+    let accountingSnapshot = PositionAccounting.load(snapshotId);
+    if(!accountingSnapshot) {
+        accountingSnapshot = new PositionAccounting(snapshotId);
+    }
 
     let entries = accounting.entries;
     for (let i = 0; i < entries.length; ++i) {
-        if (entries[i].key.toString() != "id") {
-            copiedConfig.set(entries[i].key, entries[i].value);
+        const key = entries[i].key.toString();
+        if (key != "id" && key != "collateralBalances") {
+            accountingSnapshot.set(entries[i].key, entries[i].value);
         }
     }
 
-    copiedConfig.save();
+    // Copy collateral balances (needs special handling since we need to deep copy)
+    let collateralBalancesSnapshot: Bytes[] = [];
+    for(let i = 0; i < accounting.collateralBalances.length; i++) {
+        const collateralBalance = PositionCollateralBalance.load(accounting.collateralBalances[i])!; // Guaranteed to exist
+        const collateralBalanceSnapshot = createPositionCollateralBalanceSnapshot(collateralBalance, event);
+        collateralBalancesSnapshot.push(collateralBalanceSnapshot.id);
+    }
+    accountingSnapshot.collateralBalances = collateralBalancesSnapshot;
 
-    // Create snapshot
-    const positionAccountingSnapshot = new PositionAccountingSnapshot(snapshotId);
+    accountingSnapshot.save();
+
+    // Create snapshot, or we already took it, but have manually retriggered, update it 
+    let positionAccountingSnapshot = PositionAccountingSnapshot.load(snapshotId);
+    if(!positionAccountingSnapshot) {
+        positionAccountingSnapshot = new PositionAccountingSnapshot(snapshotId);
+    }
     positionAccountingSnapshot.timestamp = event.block.timestamp;
-    positionAccountingSnapshot.position = copiedConfig.position;
-    positionAccountingSnapshot.accounting = copiedConfig.id;
+    positionAccountingSnapshot.position = accountingSnapshot.position;
+    positionAccountingSnapshot.accounting = accountingSnapshot.id;
     positionAccountingSnapshot.save();
 }
 

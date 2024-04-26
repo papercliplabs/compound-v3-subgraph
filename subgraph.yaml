@@ -4,11 +4,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: Configurator
-    network: sepolia
+    network: scroll
     source:
       abi: Configurator
-      address: "0xc28aD44975C614EaBe0Ed090207314549e1c6624"
-      startBlock: 5343451
+      address: "0xECAB0bEEa3e5DEa0c35d3E69468EAC20098032D7"
+      startBlock: 3397679
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -20,40 +20,45 @@ dataSources:
       eventHandlers:
         - event: Upgraded(indexed address)
           handler: handleUpgraded
+          receipt: true
         - event: SetFactory(indexed address,indexed address,indexed address)
           handler: handleSetFactory
+          receipt: true
       file: ./src/mappings/configurator.ts
   - kind: ethereum
     name: CometRewards
-    network: sepolia
+    network: scroll
     source:
-      abi: CometRewards
-      address: "0x91663d91795049C3D4afC85A7d0AdB15238750aa"
-      startBlock: 5343447
+      abi: CometRewardsV2
+      address: "0x70167D30964cbFDc315ECAe02441Af747bE0c5Ee"
+      startBlock: 3397682
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities: []
       abis:
-        - name: CometRewards
-          file: ./abis/CometRewardsV1.json
-        - name: CometRewards
-          file: ./abis/CometRewardsV2.json
-        - name: Erc20
-          file: ./abis/Erc20.json
-        - name: ChainlinkPriceFeed
-          file: ./abis/ChainlinkPriceFeed.json
         - name: Comet
           file: ./abis/Comet.json
+        - name: Configurator
+          file: ./abis/Configurator.json
+        - name: Erc20
+          file: ./abis/Erc20.json
+        - name: CometRewardsV1
+          file: ./abis/CometRewardsV1.json
+        - name: CometRewardsV2
+          file: ./abis/CometRewardsV2.json
+        - name: ChainlinkPriceFeed
+          file: ./abis/ChainlinkPriceFeed.json
       eventHandlers:
         - event: RewardClaimed(indexed address,indexed address,indexed address,uint256)
           handler: handleRewardClaimed
+          receipt: true
       file: ./src/mappings/cometRewards.ts
 templates:
   - kind: ethereum
     name: Comet
-    network: sepolia
+    network: scroll
     source:
       abi: Comet
     mapping:
@@ -77,27 +82,38 @@ templates:
       eventHandlers:
         - event: Upgraded(indexed address)
           handler: handleUpgraded
+          receipt: true
         - event: Supply(indexed address,indexed address,uint256)
           handler: handleSupply
+          receipt: true
         - event: Withdraw(indexed address,indexed address,uint256)
           handler: handleWithdraw
+          receipt: true
         - event: AbsorbDebt(indexed address,indexed address,uint256,uint256)
           handler: handleAbsorbDebt
+          receipt: true
         - event: SupplyCollateral(indexed address,indexed address,indexed address,uint256)
           handler: handleSupplyCollateral
+          receipt: true
         - event: WithdrawCollateral(indexed address,indexed address,indexed
             address,uint256)
           handler: handleWithdrawCollateral
+          receipt: true
         - event: TransferCollateral(indexed address,indexed address,indexed
             address,uint256)
           handler: handleTransferCollateral
+          receipt: true
         - event: AbsorbCollateral(indexed address,indexed address,indexed
             address,uint256,uint256)
           handler: handleAbsorbCollateral
+          receipt: true
         - event: BuyCollateral(indexed address,indexed address,uint256,uint256)
           handler: handleBuyCollateral
+          receipt: true
         - event: WithdrawReserves(indexed address,uint256)
           handler: handleWithdrawReserves
+          receipt: true
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
+          receipt: true
       file: ./src/mappings/comet.ts

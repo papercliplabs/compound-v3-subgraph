@@ -25,6 +25,7 @@ export function getOrCreateUsage(id: Bytes): Usage {
         usage.interactionCount = ZERO_BI;
         usage.supplyBaseCount = ZERO_BI;
         usage.withdrawBaseCount = ZERO_BI;
+        usage.transferBaseCount = ZERO_BI;
         usage.liquidationCount = ZERO_BI;
         usage.supplyCollateralCount = ZERO_BI;
         usage.withdrawCollateralCount = ZERO_BI;
@@ -216,6 +217,13 @@ export function updateUsageMetrics(
         marketCumulativeUsage.withdrawBaseCount = marketCumulativeUsage.withdrawBaseCount.plus(ONE_BI);
         marketHourlyUsage.withdrawBaseCount = marketHourlyUsage.withdrawBaseCount.plus(ONE_BI);
         marketDailyUsage.withdrawBaseCount = marketDailyUsage.withdrawBaseCount.plus(ONE_BI);
+    } else if (InteractionType.TRANSFER_BASE == interactionType) {
+        protocolCumulativeUsage.transferBaseCount = protocolCumulativeUsage.transferBaseCount.plus(ONE_BI);
+        protocolHourlyUsage.transferBaseCount = protocolHourlyUsage.transferBaseCount.plus(ONE_BI);
+        protocolDailyUsage.transferBaseCount = protocolDailyUsage.transferBaseCount.plus(ONE_BI);
+        marketCumulativeUsage.transferBaseCount = marketCumulativeUsage.transferBaseCount.plus(ONE_BI);
+        marketHourlyUsage.transferBaseCount = marketHourlyUsage.transferBaseCount.plus(ONE_BI);
+        marketDailyUsage.transferBaseCount = marketDailyUsage.transferBaseCount.plus(ONE_BI);
     } else if (InteractionType.LIQUIDATION == interactionType) {
         protocolCumulativeUsage.liquidationCount = protocolCumulativeUsage.liquidationCount.plus(ONE_BI);
         protocolHourlyUsage.liquidationCount = protocolHourlyUsage.liquidationCount.plus(ONE_BI);

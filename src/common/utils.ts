@@ -1,5 +1,5 @@
-import { Address, BigDecimal, BigInt, log } from "@graphprotocol/graph-ts";
-import { BASE_INDEX_SCALE, REWARD_FACTOR_SCALE, ZERO_ADDRESS, ZERO_BD, ZERO_BI } from "./constants";
+import { Address, BigDecimal, BigInt, ethereum, log as logger } from "@graphprotocol/graph-ts";
+import { BASE_INDEX_SCALE, REWARD_FACTOR_SCALE, SUPPLY_EVENT_SIGNATURE, WITHDRAW_EVENT_SIGNATURE, ABSORB_DEBT_EVENT_SIGNATURE, ZERO_ADDRESS, ZERO_BD, ZERO_BI } from "./constants";
 import { CometRewardsV1 as CometRewardsV1Contract } from "../../generated/templates/Comet/CometRewardsV1";
 import { CometRewardsV2 as CometRewardsV2Contract } from "../../generated/templates/Comet/CometRewardsV2";
 import { getCometRewardAddress } from "./networkSpecific";
@@ -106,7 +106,7 @@ export function getRewardConfigData(marketAddress: Address): RewardConfigData {
         // It is V1 instead
         const tryRewardConfigV1 = cometRewardsV1.try_rewardConfig(marketAddress);
         if (tryRewardConfigV1.reverted) {
-            log.warning("All reward configs reverted - {}", [marketAddress.toHexString()]);
+            logger.warning("All reward configs reverted - {}", [marketAddress.toHexString()]);
             return {
                 tokenAddress: ZERO_ADDRESS,
                 rescaleFactor: ZERO_BI,
@@ -132,4 +132,27 @@ export function getRewardConfigData(marketAddress: Address): RewardConfigData {
             multiplier: rewardConfig.getMultiplier(),
         };
     }
+}
+
+export function logsContainWithdrawOrSupplyOrAbsorbDebtEvents(event: ethereum.Event): boolean {
+    const receipt = event.receipt;
+
+    if (!receipt) {
+        // Should never get here since we require receipts in subgraph.yaml
+        logger.error("No logs for event: {} {}", [event.transaction.hash.toHexString(), event.logIndex.toString()]);
+        return false;
+    }
+
+    for (let i = 0; i < receipt.logs.length; i++) {
+        const log = receipt.logs[i];
+
+        if (log.topics.length > 0) {
+            const eventSignature = log.topics[0];
+            if (SUPPLY_EVENT_SIGNATURE == eventSignature || WITHDRAW_EVENT_SIGNATURE == eventSignature || ABSORB_DEBT_EVENT_SIGNATURE == eventSignature) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }

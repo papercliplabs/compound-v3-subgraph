@@ -51,6 +51,29 @@ export function updateMarketCollateralBalance(collateralBalance: MarketCollatera
     collateralBalance.reserves = tryGetReserves.reverted ? ZERO_BI : tryGetReserves.value;
 }
 
+export function createMarketCollateralBalanceSnapshot(
+    collateralBalance: MarketCollateralBalance,
+    event: ethereum.Event
+): MarketCollateralBalance {
+    const snapshotId = collateralBalance.id
+        .concat(Bytes.fromByteArray(Bytes.fromBigInt(event.block.number)))
+        .concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
+
+    // Copy existing config
+    const copiedConfig = new MarketCollateralBalance(snapshotId);
+
+    let entries = collateralBalance.entries;
+    for (let i = 0; i < entries.length; ++i) {
+        if (entries[i].key.toString() != "id") {
+            copiedConfig.set(entries[i].key, entries[i].value);
+        }
+    }
+
+    copiedConfig.save();
+
+    return copiedConfig;
+}
+
 // Update just the USD value of balance based on newest price and existing balance
 export function updateMarketCollateralBalanceUsd(
     collateralBalance: MarketCollateralBalance,
@@ -116,6 +139,29 @@ export function updatePositionCollateralBalance(
 
     collateralBalance.lastUpdateBlockNumber = event.block.number;
     collateralBalance.balance = userCollateral.getBalance();
+}
+
+export function createPositionCollateralBalanceSnapshot(
+    collateralBalance: PositionCollateralBalance,
+    event: ethereum.Event
+): PositionCollateralBalance {
+    const snapshotId = collateralBalance.id
+        .concat(Bytes.fromByteArray(Bytes.fromBigInt(event.block.number)))
+        .concat(Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex)));
+
+    // Copy existing config
+    const copiedConfig = new PositionCollateralBalance(snapshotId);
+
+    let entries = collateralBalance.entries;
+    for (let i = 0; i < entries.length; ++i) {
+        if (entries[i].key.toString() != "id") {
+            copiedConfig.set(entries[i].key, entries[i].value);
+        }
+    }
+
+    copiedConfig.save();
+
+    return copiedConfig;
 }
 
 export function updatePositionCollateralBalanceUsd(

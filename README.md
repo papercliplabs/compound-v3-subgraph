@@ -1,25 +1,33 @@
-# Deployments
+# Compound V3 Community Subgraphs
 
--   Ethereum Mainnet:
-    -   [Hosted Subgraph](https://thegraph.com/hosted-service/subgraph/papercliplabs/compound-v3-mainnet)
-    -   [Decentralized Subgraph](https://thegraph.com/explorer/subgraphs/5nwMCSHaTqG3Kd2gHznbTXEnZ9QNWsssQfbHhDqQSQFp?view=Overview&chain=arbitrum-one)
--   Polygon
-    -   [Hosted Subgraph](https://thegraph.com/hosted-service/subgraph/papercliplabs/compound-v3-polygon)
-    -   [Decentralized Subgraph](https://thegraph.com/explorer/subgraphs/AaFtUWKfFdj2x8nnE3RxTSJkHwGHvawH3VWFBykCGzLs?view=Overview&chain=arbitrum-one)
--   Arbitrum
-    -   [Hosted Subgraph](https://thegraph.com/hosted-service/subgraph/papercliplabs/compound-v3-arbitrum)
-    -   [Decentralized Subgraph](https://thegraph.com/explorer/subgraphs/Ff7ha9ELmpmg81D6nYxy4t8aGP26dPztqD1LDJNPqjLS?view=Overview&chain=arbitrum-one)
--   Base
-    -   [Hosted Subgraph](https://thegraph.com/hosted-service/subgraph/papercliplabs/compound-v3-base)
-    -   [Decentralized Subgraph](https://thegraph.com/explorer/subgraphs/2hcXhs36pTBDVUmk5K2Zkr6N4UYGwaHuco2a6jyTsijo?view=Overview&chain=arbitrum-one)
--   Goerli
-    -   [Hosted Subgraph](https://thegraph.com/hosted-service/subgraph/papercliplabs/compound-v3-goerli)
-	-   Decentralized is not supported (depreciated)
--   Sepolia
-    -   [Hosted Subgraph](https://thegraph.com/hosted-service/subgraph/papercliplabs/compound-v3-sepolia)
-	-   [Decentralized Subgraph](https://thegraph.com/explorer/subgraphs/HZKpJGBKpiBhKBqQuWAiR1xCAPhrsrmGYWpQavi23DR1?view=Overview&chain=arbitrum-one)
+![Subgraphs](./images/compound-v3-subgraphs.png)
 
-Decentralized subgraphs require an API key. We provide one for the Compound Community, just ask for it in the Compound discord! Please don't abuse this, otherwise we will have to revoke it.
+Compound V3 Community Subgraphs are the most comprehensive data source for developers looking to integrate Compound v3 protocol data into their decentralized applications (dApps)
+
+## Deployments
+
+### Mainnets
+
+| Blockchain Network | Deployment (The Graph Decentralized Network)                                                                                      |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| Ethereum mainnet   | [Subgraph](https://thegraph.com/explorer/subgraphs/5nwMCSHaTqG3Kd2gHznbTXEnZ9QNWsssQfbHhDqQSQFp?view=Overview&chain=arbitrum-one) |
+| Polygon            | [Subgraph](https://thegraph.com/explorer/subgraphs/AaFtUWKfFdj2x8nnE3RxTSJkHwGHvawH3VWFBykCGzLs?view=Overview&chain=arbitrum-one) |
+| Arbitrum           | [Subgraph](https://thegraph.com/explorer/subgraphs/Ff7ha9ELmpmg81D6nYxy4t8aGP26dPztqD1LDJNPqjLS?view=Overview&chain=arbitrum-one) |
+| Base               | [Subgraph](https://thegraph.com/explorer/subgraphs/2hcXhs36pTBDVUmk5K2Zkr6N4UYGwaHuco2a6jyTsijo?view=Overview&chain=arbitrum-one) |
+| Optimism           | [Subgraph](https://thegraph.com/explorer/subgraphs/FhHNkfh5z6Z2WCEBxB6V3s8RPxnJfWZ9zAfM5bVvbvbb?view=Overview&chain=arbitrum-one) |
+| Scroll             | [Subgraph](https://thegraph.com/explorer/subgraphs/6aRGn6noEdin1krLfYTnLMYaCoTujL7cHekARE4Ndxng?view=Overview&chain=arbitrum-one) |
+
+### Testnets
+
+| Blockchain Network | Subgraph                                                                                                                          |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| Sepolia            | [Subgraph](https://thegraph.com/explorer/subgraphs/HZKpJGBKpiBhKBqQuWAiR1xCAPhrsrmGYWpQavi23DR1?view=Overview&chain=arbitrum-one) |
+| Base Sepolia       | [Subgraph](https://thegraph.com/explorer/subgraphs/CrbZvEXz5vmphoSg4gauxQd33zxMQwgmErA8HeQiPb2N?view=Overview&chain=arbitrum-one) |
+
+### API Key
+
+We provide a decentralized network API key for the Compound Community, just ask for it in the Compound discord! 
+Please don't abuse, otherwise we will have to revoke it.
 
 # Usage Notes
 
@@ -75,19 +83,13 @@ Build
 yarn build:<network> 
 ```
 
-Deploy to the hosted network
-
-```bash
-yarn deploy-hosted:<network>
-```
-
 Deploy to the subgraph studio
 
 ```bash
 yarn deploy-studio:<network>
 ```
 
-Codegen, build and deploy everywhere in one command
+Codegen, build and deploy in one command
 ```bash
 yarn auto-deploy:<network> v<version (X.Y.Z)>
 
