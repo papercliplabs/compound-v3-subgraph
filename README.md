@@ -26,8 +26,8 @@ Compound V3 Community Subgraphs are the most comprehensive data source for devel
 
 ### API Key
 
-We provide a decentralized network API key for the Compound Community, just ask for it in the Compound discord! 
-Please don't abuse, otherwise we will have to revoke it.
+You will need an API Key from The Graph to query these subgraphs. They provide a generous free plan.
+You can read the docs on how to set this up here: https://thegraph.com/docs/en/subgraphs/querying/introduction/
 
 # Usage Notes
 

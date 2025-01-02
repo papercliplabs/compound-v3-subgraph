@@ -189,7 +189,7 @@
             {
                 "indexed": false,
                 "internalType": "uint256",
-                "name": "usdValue",
+                "name": "value",
                 "type": "uint256"
             }
         ],
